@@ -1,0 +1,14 @@
+pandas
+numpy
+geopandas
+streamlit
+scikit-learn
+nltk
+matplotlib
+seaborn
+plotly
+jupyter
+requests
+textblob
+osmnx
+pyarrow

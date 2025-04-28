@@ -1,0 +1,30 @@
+{
+  "san_francisco": {
+    "reviews_url": "http://data.insideairbnb.com/united-states/ca/san-francisco/2025-03-01/data/reviews.csv",
+    "listings_url": "http://data.insideairbnb.com/united-states/ca/san-francisco/2025-03-01/data/listings.csv",
+    "neighborhoods_url": "http://data.insideairbnb.com/united-states/ca/san-francisco/2025-03-01/visualisations/neighbourhoods.geojson",
+    "bbox": [
+      -122.52,
+      37.7,
+      -122.35,
+      37.83
+    ]
+  },
+  "new_york": {
+    "reviews_url": "http://data.insideairbnb.com/united-states/ny/new-york-city/2025-03-01/data/reviews.csv",
+    "listings_url": "http://data.insideairbnb.com/united-states/ny/new-york-city/2025-03-01/data/listings.csv",
+    "neighborhoods_url": "http://data.insideairbnb.com/united-states/ny/new-york-city/2025-03-01/visualisations/neighbourhoods.geojson",
+    "bbox": [
+      -74.03,
+      40.63,
+      -73.75,
+      40.85
+    ]
+  },
+  "seattle": {
+    "reviews_url":        "http://data.insideairbnb.com/united-states/wa/seattle/2024-12-23/data/reviews.csv",
+    "listings_url": "http://data.insideairbnb.com/united-states/wa/seattle/2024-12-23/data/listings.csv",
+    "neighborhoods_url": "http://data.insideairbnb.com/united-states/wa/seattle/2024-12-23/visualisations/neighbourhoods.geojson",
+    "bbox": [-122.435, 47.495, -122.235, 47.735]
+  }
+}
