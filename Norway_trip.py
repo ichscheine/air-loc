@@ -3,6 +3,9 @@ import os
 import json
 import webbrowser
 from pathlib import Path
+import re
+import subprocess
+import platform
 
 # ------------------------------
 # DATA STRUCTURE FOR YOUR TRIP
@@ -207,7 +210,6 @@ def update_image_mapping():
         day_key = date_to_day_key.get(day["date"])
         if day_key:
             # Get keywords from the location name
-            import re
             location = day["location"].lower()
             keywords = re.sub(r'[^\w\s]', ' ', location).split()
             # Only keep keywords with 3+ characters
@@ -289,7 +291,6 @@ def get_day_images(day_date):
                 break
         
         # Convert location to keywords by splitting and removing special characters
-        import re
         keywords = re.sub(r'[^\w\s]', ' ', location_name).split()
         
         # Find any images that match keywords in the filename
@@ -315,95 +316,162 @@ for day in trip_data:
 
 st.set_page_config(page_title="Norway Adventure 2025", layout="wide")
 
-st.title("🇳🇴 Norway Adventure - August 2025")
-st.markdown(
-    """
-Welcome to your trip itinerary! Browse your journey day-by-day, check photos, and get ideas for activities.
-"""
-)
+# Load custom CSS
+with open('style.css') as f:
+    st.markdown(f'<style>{f.read()}</style>', unsafe_allow_html=True)
 
-# Add image management section in sidebar
-st.sidebar.header("Image Management")
+# Define the checklist data
+checklist = {
+    "Essentials": [
+        "passport",
+        "U.S. driver license",
+        "phone, charger, and adapter(EU), powerbank"
+    ],
+    "Entertainment": [
+        "selfie stick",
+        "Kindle/books",
+        "pocket-size game"
+    ],
+    "Protection/self-care": [
+        "sunglasses",
+        "sunscreen",
+        "insect / mosquito repellent",
+        "Slippers",
+        "Personal items: water bottle; eye mask",
+        "motion sickness relief (for boat tour and car sickness?)"
+    ],
+    "Hiking Gears": [
+        "down jacket",
+        "hiking shoes",
+        "umbrella/or water resisitant rain coat"
+    ]
+}
 
-# Add button to open gallery folder
-if st.sidebar.button("📁 Open Images Folder"):
-    try:
-        import subprocess
-        import platform
-        
-        # Open the gallery folder with the appropriate command for the OS
-        if platform.system() == "Windows":
-            os.startfile(str(gallery_path.absolute()))
-        elif platform.system() == "Darwin":  # macOS
-            subprocess.Popen(["open", str(gallery_path.absolute())])
-        else:  # Linux
-            subprocess.Popen(["xdg-open", str(gallery_path.absolute())])
-        
-        st.sidebar.success(f"Opened: {gallery_path.absolute()}")
-    except Exception as e:
-        st.sidebar.error(f"Could not open folder: {e}")
-        st.sidebar.code(f"Folder path: {gallery_path.absolute()}")
-
-# Show image count
-total_images = len(gallery_images)
-st.sidebar.write(f"📸 Total images: {total_images}")
-
-# Add button to refresh image mapping
-if st.sidebar.button("🔄 Refresh Image Mapping"):
-    day_to_images = update_image_mapping()
-    
-    # Save the updated mapping
-    with open(mapping_file, 'w') as f:
-        json.dump(day_to_images, f, indent=2)
-    
-    st.sidebar.success("Image mapping refreshed!")
-    st.rerun()
+# Create the main header with a more compact style
+st.markdown('<div class="main-header"><h1>🇳🇴 Norway Adventure - August 2025</h1></div>', unsafe_allow_html=True)
 
 # Initialize session state for selected date
 if 'selected_date' not in st.session_state:
     st.session_state.selected_date = trip_data[0]["date"]
 
-# Sidebar for day selection
-st.sidebar.header("Select a Day")
+# First add the packing checklist at the top of the sidebar
+st.sidebar.markdown('<div class="sidebar-header">📋 Packing Checklist</div>', unsafe_allow_html=True)
+
+# Add checklist to sidebar
+with st.sidebar.expander("View Checklist", expanded=False):
+    # Initialize session state for checklist if not exists
+    if 'checklist_state' not in st.session_state:
+        st.session_state.checklist_state = {}
+        for category, items in checklist.items():
+            for item in items:
+                st.session_state.checklist_state[item] = False
+    
+    st.markdown('<div style="text-align: center; font-weight: bold; margin-bottom: 10px;">Norway Trip Packing List</div>', unsafe_allow_html=True)
+    
+    # Display checklist with styling based on categories
+    for category, items in checklist.items():
+        category_slug = category.lower().replace("/", "-").replace(" ", "_")
+        st.markdown(f'<div class="checklist-category {category_slug}-category">{category}</div>', unsafe_allow_html=True)
+        for i, item in enumerate(items):
+            # Create a more unique key by combining category, index and a sanitized version of the item
+            item_slug = item.lower().replace(" ", "_").replace("/", "_").replace("(", "").replace(")", "").replace(":", "").replace(";", "").replace(",", "")
+            unique_key = f"check_{category_slug}_{i}_{item_slug[:10]}"
+            checked = st.checkbox(item, key=unique_key, value=st.session_state.checklist_state.get(item, False))
+            st.session_state.checklist_state[item] = checked
+
+# Now add the day selection after the checklist
+st.sidebar.markdown('<div class="sidebar-header">Select a Day</div>', unsafe_allow_html=True)
 
 for day in trip_data:
-    if st.sidebar.button(day["date"], key=day["date"]):
+    if st.sidebar.button(day["date"], key=day["date"], help=f"View {day['location']}"):
         st.session_state.selected_date = day["date"]
+
+# Hidden functionality for developers - add a small discrete link at the bottom of the sidebar
+with st.sidebar.expander("⚙️ Developer Options", expanded=False):
+    # Add button to refresh image mapping
+    if st.button("🔄 Refresh Image Mapping"):
+        day_to_images = update_image_mapping()
+        
+        # Save the updated mapping
+        with open(mapping_file, 'w') as f:
+            json.dump(day_to_images, f, indent=2)
+        
+        st.success("Image mapping refreshed!")
+        st.rerun()
+    
+    # Add button to open gallery folder
+    if st.button("📁 Open Images Folder"):
+        try:
+            # Open the gallery folder with the appropriate command for the OS
+            if platform.system() == "Windows":
+                os.startfile(str(gallery_path.absolute()))
+            elif platform.system() == "Darwin":  # macOS
+                subprocess.Popen(["open", str(gallery_path.absolute())])
+            else:  # Linux
+                subprocess.Popen(["xdg-open", str(gallery_path.absolute())])
+            
+            st.success(f"Opened: {gallery_path.absolute()}")
+        except Exception as e:
+            st.error(f"Could not open folder: {e}")
+            st.code(f"Folder path: {gallery_path.absolute()}")
+    
+    # Show image count
+    total_images = len(gallery_images)
+    st.write(f"📸 Total images: {total_images}")
 
 selected_date = st.session_state.selected_date
 
 # Show details for selected date
 for day in trip_data:
     if day["date"] == selected_date:
-        # Add navigation buttons for previous/next day
-        col1, col2, col3 = st.columns([1, 5, 1])
-        
+        # Create a cleaner navigation with compact controls
         # Find the current day index
         current_index = trip_data.index(day)
         
-        # Previous day button
-        if current_index > 0:
-            prev_day = trip_data[current_index - 1]
-            if col1.button("⬅️ Previous Day"):
-                st.session_state.selected_date = prev_day["date"]
-                st.rerun()
+        # Create container for navigation with more compact layout
+        nav_container = st.container()
+        with nav_container:
+            st.markdown('<div class="day-nav-buttons">', unsafe_allow_html=True)
+            col1, col2, col3 = st.columns([1, 6, 1])
+            
+            # Previous day button with improved styling
+            if current_index > 0:
+                prev_day = trip_data[current_index - 1]
+                if col1.button("⬅️", help=f"Go to {prev_day['date']}"):
+                    st.session_state.selected_date = prev_day["date"]
+                    st.rerun()
+            
+            # Display header in center column with compact styling
+            col2.markdown(f'<h2 class="location-header">📍 {day["location"]}</h2>', unsafe_allow_html=True)
+            col2.markdown(f'<h3 class="date-subheader">{day["date"]}</h3>', unsafe_allow_html=True)
+            
+            # Next day button with improved styling
+            if current_index < len(trip_data) - 1:
+                next_day = trip_data[current_index + 1]
+                if col3.button("➡️", help=f"Go to {next_day['date']}"):
+                    st.session_state.selected_date = next_day["date"]
+                    st.rerun()
+            st.markdown('</div>', unsafe_allow_html=True)
         
-        # Display header in center column
-        col2.header(f"📍 {day['location']}")
-        col2.subheader(day["date"])
+        # Add compact progress indicator with label
+        progress = (current_index + 1) / len(trip_data)
+        prog_col1, prog_col2 = st.columns([6, 1])
+        with prog_col1:
+            st.progress(progress, "")  # Empty string to remove label
+        with prog_col2:
+            st.markdown(f"<div style='text-align: center; font-size: 0.7rem; margin-top: -5px;'>{current_index + 1}/{len(trip_data)}</div>", unsafe_allow_html=True)
         
-        # Next day button
-        if current_index < len(trip_data) - 1:
-            next_day = trip_data[current_index + 1]
-            if col3.button("Next Day ➡️"):
-                st.session_state.selected_date = next_day["date"]
-                st.rerun()
-        
-        # Display details
-        st.markdown(day["details"])
+        # Display details with improved formatting and more compact design
+        st.markdown(
+            f"""<div class="content-card">
+                <h4>Itinerary Details</h4>
+                <div class="card-content">{day['details']}</div>
+            </div>""", 
+            unsafe_allow_html=True
+        )
         
         if day["images"]:
-            st.subheader("📸 Images")
+            st.markdown('<h3 class="section-header">📸 Images</h3>', unsafe_allow_html=True)
             
             # Define captions based on the day's activities
             captions = {
@@ -431,35 +499,72 @@ for day in trip_data:
             if not day_captions or len(day_captions) < len(day["images"]):
                 day_captions = [f"Norway Scene {i+1}" for i in range(len(day["images"]))]
             
-            # Display images with captions
+            # Use a consistent layout for better image sizing
+            num_images = len(day["images"])
+            if num_images > 4:
+                # Use 3 columns for 5+ images
+                cols = st.columns([1, 1, 1])
+            elif num_images > 1:
+                # Use 2 columns for 2-4 images
+                cols = st.columns([1, 1])
+            else:
+                # For single images, use a wider center column that matches the circled image size
+                cols = st.columns([1, 3, 1])  # Wider center column for better image display
+            
             for i, img_path in enumerate(day["images"]):
                 caption = day_captions[i] if i < len(day_captions) else f"Norway Scene {i+1}"
+                
+                # For multi-column layout, distribute across columns
+                if num_images > 1:
+                    col_idx = i % len(cols)
+                else:
+                    # For single image, always use the center column
+                    col_idx = 1
+                
+                # Check if there's a high-resolution version in original_backup folder
+                high_res_path = img_path.replace("Norway_gallery/", "Norway_gallery/original_backup/")
+                actual_path = high_res_path if os.path.exists(high_res_path) else img_path
+                
                 try:
-                    # Create columns to control image width
-                    img_col1, img_col2, img_col3 = st.columns([1, 3, 1])
-                    with img_col2:
-                        st.image(img_path, caption=caption, width=400)
+                    with cols[col_idx]:
+                        st.markdown('<div class="image-container large-image">', unsafe_allow_html=True)
+                        # For single images, use specific width to match circled image size
+                        if num_images == 1:
+                            st.image(actual_path, caption=caption, use_container_width=True)
+                        else:
+                            # For multiple images, use container width with additional CSS styling
+                            st.image(actual_path, caption=caption, use_container_width=True)
+                        st.markdown('</div>', unsafe_allow_html=True)
                 except Exception as e:
                     st.error(f"Could not load image: {img_path}")
                     st.error(f"Error: {e}")
         else:
-            st.warning("No images available for this day yet.")
+            # Display a more friendly message in a card layout
+            st.markdown(
+                """<div class="content-card">
+                    <h4>Photos</h4>
+                    <div class="card-content" style="text-align:center;">
+                        <p>No photos available for this day yet.</p>
+                        <p>Check the Google Maps links below for this location.</p>
+                    </div>
+                </div>""", 
+                unsafe_allow_html=True
+            )
             
-        # Always show Google Maps links for this location, regardless of whether there are images
+        # Always show Google Maps links for this location with improved styling
         if day["date"] in norway_locations:
-            st.subheader("📍 Google Maps Links for this Location")
-            
-            # If there are already images, add a message about adding more
-            if day["images"]:
-                st.markdown("You already have images for this day. You can add more using the links below:")
-            else:
-                st.markdown("Use these links to find and download scenery images for this day:")
+            # Create a card-style container for Google Maps links
+            st.markdown(
+                """<div class="content-card">
+                    <h4>📍 Location Links</h4>
+                """, 
+                unsafe_allow_html=True
+            )
             
             # Extract location names from links
             location_names = []
             for link in norway_locations[day["date"]]:
                 # Extract location name from Google Maps URL
-                import re
                 match = re.search(r'place/([^/@]+)', link)
                 if match:
                     # Clean up the name (replace + with space, etc)
@@ -471,8 +576,18 @@ for day in trip_data:
                     name = f"Location {i+1}"
                 location_names.append(name)
             
-            # Display links with location names
+            # Create a neat grid for location links
+            cols = st.columns([1, 1])
             for i, (link, name) in enumerate(zip(norway_locations[day["date"]], location_names)):
-                st.markdown(f"{i+1}. [{name}]({link})")
+                col_idx = i % 2
+                with cols[col_idx]:
+                    st.markdown(f"""<a href='{link}' target='_blank' class="location-link">
+                        <div class="location-link-box">
+                            <div class="location-link-number">{i+1}</div>
+                            <div class="location-link-name">{name}</div>
+                        </div>
+                    </a>""", unsafe_allow_html=True)
+            
+            st.markdown('</div>', unsafe_allow_html=True)
         
         break

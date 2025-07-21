@@ -1,8 +1,9 @@
 {
-  "2025-08-02": [],
+  "2025-08-02": [
+    "Norway_gallery/IAD.png"
+  ],
   "2025-08-03": [
-    "Norway_gallery/Lofoten.png",
-    "Norway_gallery/Vagan.png"
+    "Norway_gallery/Lofoten.png"
   ],
   "2025-08-04": [
     "Norway_gallery/Hauklandstranda.png",
@@ -22,8 +23,7 @@
     "Norway_gallery/Bergen.png"
   ],
   "2025-08-09": [
-    "Norway_gallery/Bergen.png",
-    "Norway_gallery/\u00c5lesund.png"
+    "Norway_gallery/Ålesund.png"
   ],
   "2025-08-10": [
     "Norway_gallery/Geirangerfjorden.png"
@@ -32,7 +32,8 @@
     "Norway_gallery/Geirangerfjord.png"
   ],
   "2025-08-12": [
-    "Norway_gallery/\u00c5lesund.png"
+    "Norway_gallery/Ålesund.png",
+    "Norway_gallery/Geirangerfjord.png"
   ],
   "2025-08-13": [
     "Norway_gallery/Stavanger.png"
@@ -43,5 +44,7 @@
   "2025-08-15": [
     "Norway_gallery/Pulpit Rock.png"
   ],
-  "2025-08-16": []
+  "2025-08-16": [
+    "Norway_gallery/IAD.png"
+  ]
 }
