@@ -12,6 +12,7 @@ requests
 textblob
 osmnx
 pyarrow
-statsmodels=0.14.4
+statsmodels==0.14.4
 python-dotenv
 Pillow
+beautifulsoup4
