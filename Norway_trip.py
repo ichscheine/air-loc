@@ -802,16 +802,78 @@ css_content += """
     margin-left: 8px;
     text-decoration: none;
     font-size: 12px;
-    transition: background-color 0.2s;
+    transition: all 0.3s;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.2);
 }
 
 .map-link:hover {
     background-color: #3367D6;
+    transform: scale(1.1);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.3);
 }
 
 .rating-stars {
     color: #FFD700;
     margin-right: 4px;
+}
+
+/* Add styles for interactive elements */
+a {
+    text-decoration: none;
+    position: relative;
+    color: #4285F4;
+    transition: all 0.2s;
+}
+
+a:hover {
+    text-decoration: underline;
+    color: #3367D6;
+}
+
+a.interactive-link {
+    border-bottom: 1px dashed #4285F4;
+}
+
+a.interactive-link:hover {
+    border-bottom: 1px solid #3367D6;
+    background-color: rgba(66, 133, 244, 0.1);
+    border-radius: 2px;
+}
+
+.clickable-item {
+    transition: all 0.2s;
+    border: 1px solid transparent;
+    border-radius: 4px;
+    padding: 2px 4px;
+}
+
+.clickable-item:hover {
+    border-color: #4285F4;
+    background-color: rgba(66, 133, 244, 0.1);
+    cursor: pointer;
+}
+
+.interactive-card {
+    position: relative;
+    overflow: hidden;
+}
+
+.interactive-card::after {
+    content: "";
+    position: absolute;
+    bottom: 0;
+    right: 0;
+    width: 0;
+    height: 0;
+    border-style: solid;
+    border-width: 0 0 20px 20px;
+    border-color: transparent transparent rgba(66, 133, 244, 0.5) transparent;
+    opacity: 0;
+    transition: opacity 0.3s;
+}
+
+.interactive-card:hover::after {
+    opacity: 1;
 }
 
 /* Add styles for 3-day forecast in the sidebar */
@@ -831,34 +893,52 @@ css_content += """
     align-items: center;
     background-color: #fff;
     border-radius: 8px;
-    padding: 8px;
+    padding: 10px;
     transition: all 0.2s;
     box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    border: 1px solid transparent;
+    margin-bottom: 6px;
 }
 
 .location-link-box:hover {
     transform: translateY(-2px);
     box-shadow: 0 4px 8px rgba(0,0,0,0.15);
     background-color: #f0f8ff;
+    border-color: #4285F4;
+    cursor: pointer;
 }
 
 .location-link-number {
-    background-color: #3498db;
+    background-color: #4285F4;
     color: white;
-    width: 24px;
-    height: 24px;
+    width: 28px;
+    height: 28px;
     border-radius: 50%;
     display: flex;
     justify-content: center;
     align-items: center;
     font-weight: bold;
-    margin-right: 10px;
+    margin-right: 12px;
     flex-shrink: 0;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+    transition: all 0.2s;
+}
+
+.location-link-box:hover .location-link-number {
+    background-color: #3367D6;
+    transform: scale(1.1);
+    box-shadow: 0 3px 6px rgba(0,0,0,0.3);
 }
 
 .location-link-name {
     font-size: 0.9rem;
     font-weight: 500;
+    transition: all 0.2s;
+}
+
+.location-link-box:hover .location-link-name {
+    color: #4285F4;
+    font-weight: 600;
 }
 
 /* Add responsive design for forecast and location links on mobile */
@@ -955,13 +1035,15 @@ with st.sidebar.expander("View Checklist", expanded=False):
 st.sidebar.markdown('<div class="sidebar-header">Select a Day</div>', unsafe_allow_html=True)
 
 for day in trip_data:
-    if st.sidebar.button(day["date"], key=day["date"], help=f"View {day['location']}"):
+    if st.sidebar.button(day["date"], key=day["date"], help=f"View {day['location']}", 
+                       use_container_width=True,
+                       type="primary" if day["date"] == st.session_state.selected_date else "secondary"):
         st.session_state.selected_date = day["date"]
 
 # Hidden functionality for developers - add a small discrete link at the bottom of the sidebar
 with st.sidebar.expander("⚙️ Developer Options", expanded=False):
     # Add button to refresh image mapping
-    if st.button("🔄 Refresh Image Mapping"):
+    if st.button("🔄 Refresh Image Mapping", type="primary", use_container_width=True):
         day_to_images = update_image_mapping()
         
         # Save the updated mapping
@@ -972,7 +1054,7 @@ with st.sidebar.expander("⚙️ Developer Options", expanded=False):
         st.rerun()
     
     # Add button to open gallery folder
-    if st.button("📁 Open Images Folder"):
+    if st.button("📁 Open Images Folder", type="secondary", use_container_width=True):
         try:
             # Open the gallery folder with the appropriate command for the OS
             if platform.system() == "Windows":
@@ -1009,7 +1091,7 @@ for day in trip_data:
             # Previous day button with improved styling
             if current_index > 0:
                 prev_day = trip_data[current_index - 1]
-                if col1.button("⬅️", help=f"Go to {prev_day['date']}"):
+                if col1.button("⬅️", help=f"Go to {prev_day['date']}", key="prev_day_btn", use_container_width=True):
                     st.session_state.selected_date = prev_day["date"]
                     st.rerun()
             
@@ -1020,7 +1102,7 @@ for day in trip_data:
             # Next day button with improved styling
             if current_index < len(trip_data) - 1:
                 next_day = trip_data[current_index + 1]
-                if col3.button("➡️", help=f"Go to {next_day['date']}"):
+                if col3.button("➡️", help=f"Go to {next_day['date']}", key="next_day_btn", use_container_width=True):
                     st.session_state.selected_date = next_day["date"]
                     st.rerun()
             st.markdown('</div>', unsafe_allow_html=True)
@@ -1183,12 +1265,12 @@ for day in trip_data:
                 
                 # Create HTML with rating and link
                 activity_html = f"""<li>
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; padding: 6px; border-radius: 6px;" class="clickable-item">
                         <div>{activity}</div>
                         <div>
                             <span style="color: #FFD700; margin-right: 5px;">{rating_stars}</span>
                             <span style="color: #666;">{rating}/5</span>
-                            <a href="{maps_url}" target="_blank" style="margin-left: 10px;">🗺️</a>
+                            <a href="{maps_url}" target="_blank" style="margin-left: 10px; display: inline-flex; align-items: center; justify-content: center; background-color: #4285F4; color: white; width: 28px; height: 28px; border-radius: 50%; text-decoration: none; box-shadow: 0 2px 5px rgba(0,0,0,0.2); transition: all 0.3s;">🗺️</a>
                         </div>
                     </div>
                 </li>"""
@@ -1200,7 +1282,7 @@ for day in trip_data:
             st.markdown(
                 f"""<div class="content-card">
                     <h4>🚶‍♂️ Activities</h4>
-                    <div class="card-content">
+                    <div class="card-content interactive-card">
                         <ul style="list-style-type: none; padding-left: 0;">{activities_html}</ul>
                     </div>
                 </div>""",
@@ -1220,12 +1302,12 @@ for day in trip_data:
                 
                 # Create HTML with rating and link
                 dining_html = f"""<li>
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; padding: 6px; border-radius: 6px;" class="clickable-item">
                         <div>{dining}</div>
                         <div>
                             <span style="color: #FFD700; margin-right: 5px;">{rating_stars}</span>
                             <span style="color: #666;">{rating}/5</span>
-                            <a href="{maps_url}" target="_blank" style="margin-left: 10px;">🗺️</a>
+                            <a href="{maps_url}" target="_blank" style="margin-left: 10px; display: inline-flex; align-items: center; justify-content: center; background-color: #4285F4; color: white; width: 28px; height: 28px; border-radius: 50%; text-decoration: none; box-shadow: 0 2px 5px rgba(0,0,0,0.2); transition: all 0.3s;">🗺️</a>
                         </div>
                     </div>
                 </li>"""
@@ -1237,7 +1319,7 @@ for day in trip_data:
             st.markdown(
                 f"""<div class="content-card">
                     <h4>🍽️ Dining Options</h4>
-                    <div class="card-content">
+                    <div class="card-content interactive-card">
                         <ul style="list-style-type: none; padding-left: 0;">{dining_html}</ul>
                     </div>
                 </div>""",
@@ -1363,9 +1445,12 @@ for day in trip_data:
                 # Create a vertical list of location links
                 for i, (link, name) in enumerate(zip(norway_locations[day["date"]], location_names)):
                     st.markdown(f"""<a href='{link}' target='_blank' class="location-link">
-                        <div class="location-link-box" style="margin-bottom: 8px;">
+                        <div class="location-link-box">
                             <div class="location-link-number">{i+1}</div>
                             <div class="location-link-name">{name}</div>
+                            <div style="margin-left: auto; color: #4285F4; opacity: 0.7;">
+                                <span style="font-size: 16px;">🔗</span>
+                            </div>
                         </div>
                     </a>""", unsafe_allow_html=True)
                 
