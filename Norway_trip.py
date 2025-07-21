@@ -12,6 +12,7 @@ import requests
 from datetime import datetime, timedelta
 import time
 from dotenv import load_dotenv
+from norway_places_helper import get_place_details, get_place_details_batch
 
 # Load environment variables from .env file
 load_dotenv()
@@ -436,6 +437,8 @@ trip_data = [
         "date": "2025-08-02 (Saturday)",
         "location": "IAD → FRA → EVE",
         "details": "Overnight flight from Washington Dulles to Evenes via Frankfurt. Departure 6:10 PM.",
+        "activities": ["Airport lounges", "In-flight entertainment", "Duty-free shopping"],
+        "dining_options": ["In-flight meals", "Airport restaurants (IAD/FRA)", "Airline snacks"],
         "images": [],  # Will be populated after full trip_data is defined
     },
     {
@@ -448,6 +451,8 @@ Drive ~3 hours to Vågan in Lofoten.
 - Tjeldsund Bridge photo stop  
 - Scenic fjord views along E10
 """,
+        "activities": ["Scenic driving", "Photography at Tjeldsund Bridge", "Nature walks"],
+        "dining_options": ["Evenes Airport cafes", "Roadside stops", "Local restaurants in Lofoten"],
         "images": [],  # Will be populated after full trip_data is defined
     },
     {
@@ -457,6 +462,8 @@ Drive ~3 hours to Vågan in Lofoten.
 - Uttakleiv Beach: boulders and sunsets  
 - Offersøykammen Hike: panoramic summit views
 """,
+        "activities": ["Swimming at Haukland Beach", "Sunset photography", "Hiking", "Beachcombing"],
+        "dining_options": ["Picnic lunch at the beach", "Cafe in Uttakleiv", "Dinner in Leknes"],
         "images": [],  # Will be populated after full trip_data is defined
     },
     {
@@ -467,6 +474,8 @@ Drive ~3 hours to Vågan in Lofoten.
 - Hamnøy: red rorbuer cabins  
 - Ramberg Beach: scenic mountain backdrop
 """,
+        "activities": ["Hiking Steffenakken", "Photography at Reinebringen", "Exploring fishing villages", "Beach relaxation"],
+        "dining_options": ["Breakfast in Leknes", "Anita's Sjømat in Hamnøy", "Dinner at Ramberg Gjestegård"],
         "images": [],  # Will be populated after full trip_data is defined
     },
     {
@@ -478,6 +487,8 @@ Drive ~3 hours to Vågan in Lofoten.
 - Lofoten Museum  
 - Sea eagle safari
 """,
+        "activities": ["Exploring Nusfjord village", "Sea eagle safari", "Museum visit", "Cod liver oil factory tour"],
+        "dining_options": ["Karoline Restaurant in Nusfjord", "Local seafood at Nusfjord Rorbuer", "Traditional stockfish meal"],
         "images": [],  # Will be populated after full trip_data is defined
     },
     {
@@ -486,12 +497,16 @@ Drive ~3 hours to Vågan in Lofoten.
         "details": """- Henningsvær: charming harbor, art galleries, football field  
 - Fløya hike: spectacular harbor views
 """,
+        "activities": ["Art gallery tours", "Visit famous floating football field", "Hiking Fløya", "Shopping for local crafts"],
+        "dining_options": ["Fiskekrogen seafood restaurant", "Henningsvær Lysstøperi & Café", "Trevarefabrikken brewery"],
         "images": [],  # Will be populated after full trip_data is defined
     },
     {
         "date": "2025-08-08 (Friday)",
         "location": "Fly EVE → Bergen",
         "details": "Flight 3:40 PM – 5:30 PM to Bergen.",
+        "activities": ["Souvenir shopping in Lofoten", "Flight to Bergen", "Evening walk in Bergen"],
+        "dining_options": ["Airport dining", "In-flight meal", "Dinner at Bryggen in Bergen"],
         "images": [],  # Will be populated after full trip_data is defined
     },
     {
@@ -504,6 +519,8 @@ Drive ~3 hours to Vågan in Lofoten.
 
 Fly to Ålesund in afternoon.
 """,
+        "activities": ["Bryggen Wharf exploration", "Fløyen funicular ride", "Fish market visit", "Flight to Ålesund"],
+        "dining_options": ["Bergen fish market food stalls", "Bryggen restaurants", "Evening dining in Ålesund"],
         "images": [],  # Will be populated after full trip_data is defined
     },
     {
@@ -515,6 +532,8 @@ Possible hikes:
 - Skageflå Farm hike  
 - Flydalsjuvet viewpoint
 """,
+        "activities": ["Scenic coastal drive", "Skageflå Farm hike", "Flydalsjuvet viewpoint visit", "Photography stops"],
+        "dining_options": ["Packed lunch for the drive", "Local farm-to-table restaurants", "Dinner at Geiranger hotel"],
         "images": [],  # Will be populated after full trip_data is defined
     },
     {
@@ -524,12 +543,16 @@ Possible hikes:
 - The Suitor waterfall  
 - UNESCO fjord scenery
 """,
+        "activities": ["Geirangerfjord cruise", "Seven Sisters waterfall viewing", "The Suitor waterfall visit", "UNESCO fjord scenery exploration"],
+        "dining_options": ["Breakfast at hotel", "Lunch on cruise ship", "Dinner at local seafood restaurant"],
         "images": [],  # Will be populated after full trip_data is defined
     },
     {
         "date": "2025-08-12 (Tuesday)",
         "location": "Geirangerfjord → Ålesund",
         "details": "Morning canyoning in Geirangerfjord. Drive back to Ålesund.",
+        "activities": ["Morning canyoning adventure", "Scenic drive to Ålesund", "Evening walk in Ålesund", "Art nouveau architecture exploration"],
+        "dining_options": ["Breakfast at Geiranger", "Lunch at roadside café", "Dinner at Ålesund seafood restaurant"],
         "images": [],  # Will be populated after full trip_data is defined
     },
     {
@@ -538,6 +561,8 @@ Possible hikes:
         "details": """- Explore Stavanger Old Town  
 - Colorful wooden houses and harbor views
 """,
+        "activities": ["Morning in Ålesund", "Flight to Stavanger", "Stavanger Old Town exploration", "Harbor views walking tour"],
+        "dining_options": ["Breakfast at Ålesund hotel", "Airport lunch", "Dinner in Stavanger Old Town"],
         "images": [],  # Will be populated after full trip_data is defined
     },
     {
@@ -545,6 +570,8 @@ Possible hikes:
         "location": "Kjerag Hike",
         "details": """- Kjeragbolten hike: iconic boulder wedged between cliffs
 """,
+        "activities": ["Kjeragbolten full day hike", "Photography at the iconic boulder", "Scenic views of Lysefjord"],
+        "dining_options": ["Packed lunch for hike", "Early breakfast at hotel", "Celebratory dinner in Stavanger"],
         "images": [],  # Will be populated after full trip_data is defined
     },
     {
@@ -552,12 +579,16 @@ Possible hikes:
         "location": "Pulpit Rock",
         "details": """- Hike to Preikestolen (Pulpit Rock) overlooking Lysefjord
 """,
+        "activities": ["Hike to Preikestolen (Pulpit Rock)", "Photography at the cliff edge", "Lysefjord views", "Nature exploration"],
+        "dining_options": ["Breakfast at accommodation", "Packed lunch for hike", "Dinner at local restaurant in Stavanger"],
         "images": [],  # Will be populated after full trip_data is defined
     },
     {
         "date": "2025-08-16 (Saturday)",
         "location": "Return Home",
         "details": "Flight SVG → FRA → IAD. Depart 6:45 AM, arrive 1:30 PM.",
+        "activities": ["Early morning airport transfer", "SVG → FRA flight", "FRA → IAD flight", "Arrival home"],
+        "dining_options": ["Early breakfast at hotel", "In-flight meals", "Airport dining options"],
         "images": [],  # Will be populated after full trip_data is defined
     }
 ]
@@ -750,6 +781,37 @@ css_content += """
 .hourly-forecast-item:hover {
     transform: translateY(-3px);
     box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+}
+
+/* Add styles for Google Maps links and ratings */
+.place-rating {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+}
+
+.map-link {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background-color: #4285F4;
+    color: white;
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    margin-left: 8px;
+    text-decoration: none;
+    font-size: 12px;
+    transition: background-color 0.2s;
+}
+
+.map-link:hover {
+    background-color: #3367D6;
+}
+
+.rating-stars {
+    color: #FFD700;
+    margin-right: 4px;
 }
 
 /* Add styles for 3-day forecast in the sidebar */
@@ -1107,6 +1169,80 @@ for day in trip_data:
             </div>""", 
             unsafe_allow_html=True
         )
+        
+        # Display activities if available
+        if 'activities' in day and day['activities']:
+            # Get place information with ratings for activities
+            location_context = day["location"].split('→')[0].strip() if '→' in day["location"] else day["location"]
+            activities_with_details = []
+            
+            for activity in day['activities']:
+                # Get Google Maps URL and rating
+                maps_url, rating = get_place_details(activity, location_context)
+                rating_stars = "⭐" * int(rating) + ("½" if rating % 1 >= 0.5 else "")
+                
+                # Create HTML with rating and link
+                activity_html = f"""<li>
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px;">
+                        <div>{activity}</div>
+                        <div>
+                            <span style="color: #FFD700; margin-right: 5px;">{rating_stars}</span>
+                            <span style="color: #666;">{rating}/5</span>
+                            <a href="{maps_url}" target="_blank" style="margin-left: 10px;">🗺️</a>
+                        </div>
+                    </div>
+                </li>"""
+                activities_with_details.append(activity_html)
+            
+            # Join all activities HTML
+            activities_html = ''.join(activities_with_details)
+            
+            st.markdown(
+                f"""<div class="content-card">
+                    <h4>🚶‍♂️ Activities</h4>
+                    <div class="card-content">
+                        <ul style="list-style-type: none; padding-left: 0;">{activities_html}</ul>
+                    </div>
+                </div>""",
+                unsafe_allow_html=True
+            )
+        
+        # Display dining options if available
+        if 'dining_options' in day and day['dining_options']:
+            # Get place information with ratings for dining options
+            location_context = day["location"].split('→')[0].strip() if '→' in day["location"] else day["location"]
+            dining_with_details = []
+            
+            for dining in day['dining_options']:
+                # Get Google Maps URL and rating
+                maps_url, rating = get_place_details(dining, location_context)
+                rating_stars = "⭐" * int(rating) + ("½" if rating % 1 >= 0.5 else "")
+                
+                # Create HTML with rating and link
+                dining_html = f"""<li>
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px;">
+                        <div>{dining}</div>
+                        <div>
+                            <span style="color: #FFD700; margin-right: 5px;">{rating_stars}</span>
+                            <span style="color: #666;">{rating}/5</span>
+                            <a href="{maps_url}" target="_blank" style="margin-left: 10px;">🗺️</a>
+                        </div>
+                    </div>
+                </li>"""
+                dining_with_details.append(dining_html)
+            
+            # Join all dining HTML
+            dining_html = ''.join(dining_with_details)
+            
+            st.markdown(
+                f"""<div class="content-card">
+                    <h4>🍽️ Dining Options</h4>
+                    <div class="card-content">
+                        <ul style="list-style-type: none; padding-left: 0;">{dining_html}</ul>
+                    </div>
+                </div>""",
+                unsafe_allow_html=True
+            )
                 
         
         # Create a section for images and location links side by side
