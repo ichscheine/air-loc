@@ -12,7 +12,7 @@ import requests
 from datetime import datetime, timedelta
 import time
 from dotenv import load_dotenv
-from norway_places_helper import get_place_details, get_place_details_batch
+from bs4 import BeautifulSoup
 
 # Load environment variables from .env file
 load_dotenv()
@@ -23,6 +23,60 @@ WEATHER_API_KEY = os.getenv("WEATHER_API_KEY", "YOUR_API_KEY_HERE")
 # ------------------------------
 # UTILITY FUNCTIONS
 # ------------------------------
+
+def get_place_details(place_name, location_context="Norway"):
+    """
+    Function to get Google Maps link and rating for a place
+    Returns a tuple of (maps_url, rating)
+    
+    Args:
+        place_name (str): Name of the place
+        location_context (str): Additional location context (e.g., Norway, Bergen)
+    
+    Returns:
+        tuple: (maps_url, rating) - Google Maps URL and rating (out of 5)
+    """
+    try:
+        # Prepare search query
+        search_query = f"{place_name} {location_context}"
+        search_query = search_query.replace(" ", "+")
+        
+        # Create Google Maps search URL
+        maps_url = f"https://www.google.com/maps/search/{search_query}"
+        
+        # For demonstration purposes, we'll generate simulated ratings
+        # In a real application, you would use the Google Places API or web scraping
+        # This is simpler and avoids API key requirements for this demo
+        
+        # Generate a predictable but seemingly random rating between 3.5 and 4.9
+        # Using the length of the place name to create variation
+        seed = sum(ord(c) for c in place_name)
+        rating = 3.5 + (seed % 14) / 10.0
+        if rating > 4.9:
+            rating = 4.9
+        
+        # Return the maps URL and the simulated rating
+        return maps_url, round(rating, 1)
+    
+    except Exception as e:
+        print(f"Error getting details for {place_name}: {e}")
+        return f"https://www.google.com/maps/search/{place_name.replace(' ', '+')}", None
+
+def get_place_details_batch(places, location_context="Norway"):
+    """
+    Get details for multiple places at once
+    
+    Args:
+        places (list): List of place names
+        location_context (str): Location context to add to searches
+        
+    Returns:
+        dict: Dictionary mapping place names to (url, rating) tuples
+    """
+    results = {}
+    for place in places:
+        results[place] = get_place_details(place, location_context)
+    return results
 
 def get_location_coordinates(location_name):
     """
