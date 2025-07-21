@@ -108,50 +108,255 @@ def get_current_weather(lat, lon):
 
 def get_forecast(lat, lon):
     """
-    Get 7-day forecast for coordinates
+    Get forecast for coordinates using Met Norway API (no API key required)
     """
     try:
-        # Note: OpenWeatherMap has renamed onecall to 3.0/onecall, let's try both
-        try:
-            # Include hourly data for detailed hourly forecast
-            forecast_url = f"https://api.openweathermap.org/data/3.0/onecall?lat={lat}&lon={lon}&exclude=minutely&units=metric&appid={WEATHER_API_KEY}"
-            response = requests.get(forecast_url)
+        # Format the Met Norway API URL with lat/lon
+        forecast_url = f"https://api.met.no/weatherapi/locationforecast/2.0/compact?lat={lat}&lon={lon}"
+        
+        # Met Norway requires a user agent with contact information
+        headers = {
+            'User-Agent': 'NorwayTripPlanner/1.0 github.com/ichscheine/air-loc'
+        }
+        
+        # Make the API request
+        response = requests.get(forecast_url, headers=headers)
+        
+        # Debug info
+        print(f"Met Norway API response for {lat},{lon}: Status {response.status_code}")
+        
+        if response.status_code == 200:
+            # Process the Met Norway data into a format compatible with our existing UI
             data = response.json()
-            
-            # Debug info
-            print(f"Forecast API response for {lat},{lon}: Status {response.status_code}")
-            
-            # Check if we got a valid response
-            if 'cod' in data and data['cod'] != 200:
-                # Fall back to the old endpoint
-                raise Exception(f"New API endpoint error: {data.get('message', 'Unknown error')}")
-            
-            # Verify that we have the expected data structure
-            if 'daily' not in data or 'hourly' not in data:
-                print(f"Unexpected data structure in API response: {list(data.keys())}")
-                raise Exception("Missing daily or hourly data")
-                
-            return data
-        except Exception as e:
-            # Try the legacy endpoint if the new one fails
-            print(f"Trying legacy forecast endpoint: {e}")
-            forecast_url = f"https://api.openweathermap.org/data/2.5/onecall?lat={lat}&lon={lon}&exclude=minutely&units=metric&appid={WEATHER_API_KEY}"
-            response = requests.get(forecast_url)
-            data = response.json()
-            
-            # Debug info for legacy endpoint
-            print(f"Legacy forecast API response for {lat},{lon}: Status {response.status_code}")
-            
-            # Verify data structure
-            if response.status_code == 200 and 'daily' in data and 'hourly' in data:
-                return data
-            else:
-                print(f"Legacy endpoint error: {data.get('message', 'Missing daily/hourly data')}")
-                return None
-            
+            processed_data = process_met_norway_data(data)
+            return processed_data
+        else:
+            print(f"Met Norway API error: Status {response.status_code}")
+            return None
     except Exception as e:
-        print(f"Error getting forecast: {e}")
+        print(f"Error getting forecast from Met Norway: {e}")
         return None
+
+def process_met_norway_data(data):
+    """
+    Process Met Norway API data into a format compatible with our existing UI
+    """
+    try:
+        # Create a structure similar to OpenWeatherMap for compatibility
+        processed_data = {
+            'daily': [],
+            'hourly': []
+        }
+        
+        if 'properties' not in data or 'timeseries' not in data['properties']:
+            print("Invalid Met Norway data format")
+            return None
+        
+        # Get the timeseries data
+        timeseries = data['properties']['timeseries']
+        
+        # Current date to track day changes
+        current_date = None
+        daily_data = None
+        
+        # Process hourly data first (for the next 24 hours)
+        for i, time_data in enumerate(timeseries[:24]):  # First 24 hours
+            timestamp = datetime.fromisoformat(time_data['time'].replace('Z', '+00:00'))
+            
+            # Skip if we don't have the necessary data
+            if 'data' not in time_data or 'instant' not in time_data['data'] or 'details' not in time_data['data']['instant']:
+                continue
+                
+            details = time_data['data']['instant']['details']
+            
+            # Find weather symbol for this time (in next_1_hours, next_6_hours, or next_12_hours)
+            symbol_code = None
+            precipitation_amount = 0
+            
+            for period in ['next_1_hours', 'next_6_hours', 'next_12_hours']:
+                if period in time_data['data'] and 'summary' in time_data['data'][period]:
+                    symbol_code = time_data['data'][period]['summary'].get('symbol_code')
+                    if 'details' in time_data['data'][period]:
+                        precipitation_amount = time_data['data'][period]['details'].get('precipitation_amount', 0)
+                    break
+            
+            # If we still don't have a symbol, use a default
+            if not symbol_code:
+                symbol_code = 'fair_day'
+            
+            # Create an hourly entry
+            hourly_entry = {
+                'dt': int(timestamp.timestamp()),
+                'temp': details.get('air_temperature', 0),
+                'weather': [{
+                    'description': get_weather_description(symbol_code),
+                    'icon': convert_met_norway_icon(symbol_code)
+                }],
+                'wind_speed': details.get('wind_speed', 0),
+                'wind_deg': details.get('wind_from_direction', 0),
+                'humidity': details.get('relative_humidity', 0),
+                'pop': 1.0 if precipitation_amount > 0 else 0.0
+            }
+            
+            processed_data['hourly'].append(hourly_entry)
+        
+        # Process daily data - group by day
+        day_data = {}
+        
+        for time_data in timeseries:
+            timestamp = datetime.fromisoformat(time_data['time'].replace('Z', '+00:00'))
+            day_key = timestamp.date().isoformat()
+            
+            if day_key not in day_data:
+                day_data[day_key] = {
+                    'temps': [],
+                    'weather_symbols': [],
+                    'precipitation': [],
+                    'wind_speeds': [],
+                    'timestamp': int(timestamp.replace(hour=12).timestamp())  # Use noon as representative time
+                }
+            
+            if 'data' in time_data and 'instant' in time_data['data'] and 'details' in time_data['data']['instant']:
+                details = time_data['data']['instant']['details']
+                
+                # Collect temperature for min/max calculation
+                if 'air_temperature' in details:
+                    day_data[day_key]['temps'].append(details['air_temperature'])
+                
+                # Collect wind speed
+                if 'wind_speed' in details:
+                    day_data[day_key]['wind_speeds'].append(details['wind_speed'])
+                
+                # Find weather symbol and precipitation
+                for period in ['next_1_hours', 'next_6_hours', 'next_12_hours']:
+                    if period in time_data['data'] and 'summary' in time_data['data'][period]:
+                        symbol_code = time_data['data'][period]['summary'].get('symbol_code')
+                        if symbol_code:
+                            day_data[day_key]['weather_symbols'].append(symbol_code)
+                        
+                        if 'details' in time_data['data'][period] and 'precipitation_amount' in time_data['data'][period]['details']:
+                            day_data[day_key]['precipitation'].append(time_data['data'][period]['details']['precipitation_amount'])
+        
+        # Convert daily data to the format expected by our UI
+        for day_key, data in day_data.items():
+            if len(data['temps']) == 0:
+                continue  # Skip days with no temperature data
+                
+            # Get the most common weather symbol for the day
+            weather_symbol = max(set(data['weather_symbols']), key=data['weather_symbols'].count) if data['weather_symbols'] else 'fair_day'
+            
+            # Calculate precipitation probability
+            has_precipitation = any(p > 0 for p in data['precipitation']) if data['precipitation'] else False
+            
+            daily_entry = {
+                'dt': data['timestamp'],
+                'temp': {
+                    'min': min(data['temps']),
+                    'max': max(data['temps'])
+                },
+                'weather': [{
+                    'description': get_weather_description(weather_symbol),
+                    'icon': convert_met_norway_icon(weather_symbol)
+                }],
+                'wind_speed': max(data['wind_speeds']) if data['wind_speeds'] else 0,
+                'pop': 1.0 if has_precipitation else 0.0
+            }
+            
+            processed_data['daily'].append(daily_entry)
+        
+        # Sort daily data by timestamp
+        processed_data['daily'].sort(key=lambda x: x['dt'])
+        
+        # Limit to 5 days
+        processed_data['daily'] = processed_data['daily'][:5]
+        
+        return processed_data
+        
+    except Exception as e:
+        print(f"Error processing Met Norway data: {e}")
+        return None
+
+def convert_met_norway_icon(symbol_code):
+    """
+    Convert Met Norway symbol codes to OpenWeatherMap icon codes
+    """
+    # Remove any '_day' or '_night' suffix for simplicity
+    base_code = symbol_code.split('_')[0]
+    
+    # Map Met Norway symbols to OpenWeatherMap icons
+    met_to_owm = {
+        'clearsky': '01d',
+        'fair': '02d',
+        'partlycloudy': '03d',
+        'cloudy': '04d',
+        'rainshowers': '09d',
+        'rain': '10d',
+        'heavyrain': '10d',
+        'rainandthunder': '11d',
+        'sleet': '13d',
+        'snow': '13d',
+        'snowandthunder': '13d',
+        'fog': '50d',
+        'sleetshowers': '09d',
+        'snowshowers': '13d',
+        'rainshowersandthunder': '11d',
+        'sleetshowersandthunder': '11d',
+        'snowshowersandthunder': '13d',
+        'heavyrainandthunder': '11d',
+        'heavysleetandthunder': '11d',
+        'heavysnowandthunder': '13d',
+        'heavyrainshowersandthunder': '11d',
+        'heavysleetshowersandthunder': '11d',
+        'heavysnowshowersandthunder': '13d'
+    }
+    
+    # Check if it's a night icon
+    is_night = '_night' in symbol_code
+    
+    # Get the matching icon, defaulting to clear sky
+    owm_icon = met_to_owm.get(base_code, '01d')
+    
+    # Change 'd' to 'n' for night icons
+    if is_night:
+        owm_icon = owm_icon[:-1] + 'n'
+    
+    return owm_icon
+
+def get_weather_description(symbol_code):
+    """
+    Get a human-readable description from Met Norway symbol code
+    """
+    # Remove day/night suffix
+    base_code = symbol_code.split('_')[0]
+    
+    # Map to human-readable descriptions
+    descriptions = {
+        'clearsky': 'Clear sky',
+        'fair': 'Fair',
+        'partlycloudy': 'Partly cloudy',
+        'cloudy': 'Cloudy',
+        'rainshowers': 'Rain showers',
+        'rain': 'Rain',
+        'heavyrain': 'Heavy rain',
+        'rainandthunder': 'Rain and thunder',
+        'sleet': 'Sleet',
+        'snow': 'Snow',
+        'snowandthunder': 'Snow and thunder',
+        'fog': 'Fog',
+        'sleetshowers': 'Sleet showers',
+        'snowshowers': 'Snow showers',
+        'rainshowersandthunder': 'Rain showers and thunder',
+        'sleetshowersandthunder': 'Sleet showers and thunder',
+        'snowshowersandthunder': 'Snow showers and thunder',
+        'heavyrainandthunder': 'Heavy rain and thunder',
+        'heavysleetandthunder': 'Heavy sleet and thunder',
+        'heavysnowandthunder': 'Heavy snow and thunder',
+        'heavyrainshowersandthunder': 'Heavy rain showers and thunder',
+        'heavysleetshowersandthunder': 'Heavy sleet showers and thunder',
+        'heavysnowshowersandthunder': 'Heavy snow showers and thunder'
+    }
+    
+    return descriptions.get(base_code, 'Unknown')
 
 def get_weather_icon(icon_code):
     """
@@ -818,81 +1023,59 @@ for day in trip_data:
                 with col2:
                     if forecast and 'daily' in forecast and len(forecast['daily']) > 0:
                         st.markdown(
-                            f"""<div class="content-card weather-card">
+                            f"""<div class='content-card weather-card' style='height: 100%;'>
                                 <h4>📅 3-Day Forecast</h4>
-                                <div class="card-content">
-                                    <div style="display: flex; flex-direction: column; gap: 8px;">
-                            """, 
-                            unsafe_allow_html=True
+                                <div class='card-content'>
+                            """, unsafe_allow_html=True
                         )
-                        
-                        # Display 3-day forecast
-                        forecast_days = []
-                        for i, day_forecast in enumerate(forecast['daily'][:3]):  # Show 3 days
-                            try:
-                                # Format the date
-                                date = datetime.fromtimestamp(day_forecast['dt']).strftime("%a %d")
-                                
-                                # Safely get weather icon
-                                icon_code = day_forecast['weather'][0]['icon'] if 'weather' in day_forecast and day_forecast['weather'] else '01d'
-                                icon = get_weather_icon(icon_code)
-                                
-                                # Safely get temperature values
-                                if 'temp' in day_forecast and isinstance(day_forecast['temp'], dict):
-                                    max_temp = day_forecast['temp'].get('max', 0)
-                                    min_temp = day_forecast['temp'].get('min', 0)
-                                else:
-                                    max_temp = day_forecast.get('temp_max', 0) if 'temp_max' in day_forecast else 0
-                                    min_temp = day_forecast.get('temp_min', 0) if 'temp_min' in day_forecast else 0
-                                
-                                # Safely get precipitation probability
-                                pop = day_forecast.get('pop', 0)
-                                pop_formatted = f"{pop * 100:.0f}%" if isinstance(pop, (int, float)) else "N/A"
-                                
-                                # Safely get weather description
-                                weather_desc = day_forecast['weather'][0]['description'].capitalize() if 'weather' in day_forecast and day_forecast['weather'] else 'Unknown'
-                                
-                                forecast_days.append(f"""
-                                    <div class="forecast-day-compact">
-                                        <div style="font-weight: bold;">{date}</div>
-                                        <div style="display: flex; justify-content: space-between; align-items: center;">
-                                            <div style="font-size: 1.8rem; margin-right: 5px;">{icon}</div>
-                                            <div style="text-align: left;">
-                                                <div style="font-size: 0.8rem;">{weather_desc}</div>
-                                                <div>
-                                                    <span style="color: #d63031; font-weight: bold;">{max_temp:.1f}°C</span> / 
-                                                    <span style="color: #0984e3;">{min_temp:.1f}°C</span>
+                        cols = st.columns(3)
+                        for i in range(3):
+                            with cols[i]:
+                                try:
+                                    day_forecast = forecast['daily'][i]
+                                    date = datetime.fromtimestamp(day_forecast['dt']).strftime("%a %d")
+                                    icon_code = day_forecast['weather'][0]['icon'] if 'weather' in day_forecast and day_forecast['weather'] else '01d'
+                                    icon = get_weather_icon(icon_code)
+                                    if 'temp' in day_forecast and isinstance(day_forecast['temp'], dict):
+                                        max_temp = day_forecast['temp'].get('max', 0)
+                                        min_temp = day_forecast['temp'].get('min', 0)
+                                    else:
+                                        max_temp = day_forecast.get('temp_max', 0) if 'temp_max' in day_forecast else 0
+                                        min_temp = day_forecast.get('temp_min', 0) if 'temp_min' in day_forecast else 0
+                                    pop = day_forecast.get('pop', 0)
+                                    pop_formatted = f"{pop * 100:.0f}%" if isinstance(pop, (int, float)) else "N/A"
+                                    weather_desc = day_forecast['weather'][0]['description'].capitalize() if 'weather' in day_forecast and day_forecast['weather'] else 'Unknown'
+                                    st.markdown(f"""
+                                        <div class='forecast-day-compact' style='background: rgba(255, 255, 255, 0.95); border-radius: 8px; padding: 10px; margin-bottom: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);'>
+                                            <div style='display: flex; flex-direction: column; align-items: center;'>
+                                                <div style='font-weight: bold; font-size: 0.9rem; color: #333;'>{date}</div>
+                                                <div style='font-size: 1.8rem;'>{icon}</div>
+                                                <div style='font-size: 0.8rem; color: #555;'>{weather_desc}</div>
+                                                <div style='margin: 2px 0;'>
+                                                    <span style='color: #d63031; font-weight: bold;'>{max_temp:.1f}°C</span> /
+                                                    <span style='color: #0984e3;'>{min_temp:.1f}°C</span>
                                                 </div>
-                                                <div style="font-size: 0.8rem;">🌧️ {pop_formatted}</div>
+                                                <div style='font-size: 0.8rem; color: #555;'>🌧️ {pop_formatted}</div>
                                             </div>
                                         </div>
-                                    </div>
-                                """)
-                            except Exception as e:
-                                forecast_days.append(f"""
-                                    <div class="forecast-day-compact">
-                                        <div style="font-weight: bold;">Day {i+1}</div>
-                                        <div style="display: flex; justify-content: space-between; align-items: center;">
-                                            <div style="font-size: 1.8rem; margin-right: 5px;">🌡️</div>
-                                            <div style="text-align: left;">
-                                                <div style="font-size: 0.8rem;">Unknown</div>
-                                                <div>--°C / --°C</div>
-                                                <div style="font-size: 0.8rem;">--</div>
+                                    """, unsafe_allow_html=True)
+                                except Exception as e:
+                                    st.markdown(f"""
+                                        <div class='forecast-day-compact' style='background: rgba(255, 255, 255, 0.95); border-radius: 8px; padding: 10px; margin-bottom: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);'>
+                                            <div style='display: flex; flex-direction: column; align-items: center;'>
+                                                <div style='font-weight: bold; font-size: 0.9rem; color: #333;'>Day {i+1}</div>
+                                                <div style='font-size: 1.8rem;'>🌡️</div>
+                                                <div style='font-size: 0.8rem; color: #555;'>Unknown</div>
+                                                <div style='margin: 2px 0; color: #555;'>--°C / --°C</div>
+                                                <div style='font-size: 0.8rem; color: #555;'>--</div>
                                             </div>
                                         </div>
-                                    </div>
-                                """)
-                                print(f"Error in 3-day forecast for day {i}: {e}")
-                        
-                        st.markdown(
-                            f"""
-                                    {''.join(forecast_days)}
-                                    </div>
+                                    """, unsafe_allow_html=True)
+                                    print(f"Error in 3-day forecast for day {i}: {e}")
+                        st.markdown("""
                                 </div>
                             </div>
-                            """, 
-                            unsafe_allow_html=True
-                        )
+                        """, unsafe_allow_html=True)
                     else:
                         st.markdown(
                             f"""<div class="content-card weather-card">
@@ -904,177 +1087,9 @@ for day in trip_data:
                             unsafe_allow_html=True
                         )
                 
-                # Show hourly forecast for next 12 hours if available
-                if forecast and 'hourly' in forecast and len(forecast['hourly']) > 0:
-                    try:
-                        st.markdown('<h4 class="section-header">⏱️ Hourly Forecast</h4>', unsafe_allow_html=True)
-                        
-                        # Create scrollable container for hourly forecast
-                        st.markdown("""
-                        <style>
-                        .hourly-forecast-container {
-                            display: flex;
-                            overflow-x: auto;
-                            padding: 10px 0;
-                            gap: 15px;
-                            margin-bottom: 20px;
-                            -webkit-overflow-scrolling: touch; /* Smooth scrolling on iOS */
-                        }
-                        .hourly-forecast-item {
-                            min-width: 90px;
-                            flex: 0 0 auto;
-                            background-color: #fff;
-                            border-radius: 8px;
-                            padding: 10px;
-                            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-                            text-align: center;
-                        }
-                        </style>
-                        """, unsafe_allow_html=True)
-                        
-                        hourly_items = []
-                        for hour_data in forecast['hourly'][:12]:  # Show next 12 hours
-                            try:
-                                # Safely get timestamp
-                                dt = hour_data.get('dt', 0)
-                                hour_time = datetime.fromtimestamp(dt).strftime("%H:%M")
-                                
-                                # Safely get weather icon
-                                weather_data = hour_data.get('weather', [{'icon': '01d'}])
-                                icon_code = weather_data[0].get('icon', '01d') if weather_data else '01d'
-                                hour_icon = get_weather_icon(icon_code)
-                                
-                                # Safely get temperature
-                                temp = hour_data.get('temp', 'N/A')
-                                temp_display = f"{temp:.1f}°C" if isinstance(temp, (int, float)) else temp
-                                
-                                # Safely get weather description
-                                weather_desc = weather_data[0].get('description', 'Unknown').capitalize() if weather_data else 'Unknown'
-                                
-                                hourly_items.append(f"""
-                                <div class="hourly-forecast-item">
-                                    <div style="font-weight: bold;">{hour_time}</div>
-                                    <div style="font-size: 1.8rem;">{hour_icon}</div>
-                                    <div>{temp_display}</div>
-                                    <div style="font-size: 0.8rem;">{weather_desc}</div>
-                                </div>
-                                """)
-                            except Exception as e:
-                                print(f"Error processing hourly forecast item: {e}")
-                                # Add a placeholder for failed items
-                                hourly_items.append(f"""
-                                <div class="hourly-forecast-item">
-                                    <div style="font-weight: bold;">--:--</div>
-                                    <div style="font-size: 1.8rem;">🌡️</div>
-                                    <div>--°C</div>
-                                    <div style="font-size: 0.8rem;">Data unavailable</div>
-                                </div>
-                                """)
-                        
-                        if hourly_items:
-                            st.markdown(f"""
-                            <div class="hourly-forecast-container">
-                                {''.join(hourly_items)}
-                            </div>
-                            """, unsafe_allow_html=True)
-                        else:
-                            st.info("Hourly forecast data is not available.")
-                    except Exception as e:
-                        st.error(f"Could not display hourly forecast: {e}")
-                        print(f"Error displaying hourly forecast: {e}")
+                # Hourly forecast has been removed to fix HTML rendering issues
                 
-                # Show 5-day forecast
-                if forecast and 'daily' in forecast and len(forecast['daily']) > 0:
-                    st.markdown('<h4 class="section-header">📅 5-Day Forecast</h4>', unsafe_allow_html=True)
-                    
-                    # Create a container for the 5-day forecast
-                    st.markdown("""
-                    <style>
-                    .five-day-forecast-container {
-                        display: flex;
-                        justify-content: space-between;
-                        gap: 10px;
-                        margin-bottom: 20px;
-                        flex-wrap: wrap;
-                    }
-                    .five-day-forecast-item {
-                        flex: 1;
-                        min-width: 130px;
-                        background-color: #fff;
-                        border-radius: 8px;
-                        padding: 10px;
-                        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-                        text-align: center;
-                        margin-bottom: 10px;
-                    }
-                    @media (max-width: 768px) {
-                        .five-day-forecast-item {
-                            min-width: 45%;
-                        }
-                    }
-                    </style>
-                    """, unsafe_allow_html=True)
-                    
-                    forecast_items = []
-                    for i, day_forecast in enumerate(forecast['daily'][:5]):  # Show up to 5 days
-                        try:
-                            # Format the date
-                            date = datetime.fromtimestamp(day_forecast['dt']).strftime("%a %d %b")
-                            
-                            # Safely get weather icon
-                            icon_code = day_forecast['weather'][0]['icon'] if 'weather' in day_forecast and day_forecast['weather'] else '01d'
-                            icon = get_weather_icon(icon_code)
-                            
-                            # Safely get weather description
-                            weather_desc = day_forecast['weather'][0]['description'].capitalize() if 'weather' in day_forecast and day_forecast['weather'] else 'Unknown'
-                            
-                            # Safely get temperature values
-                            if 'temp' in day_forecast and isinstance(day_forecast['temp'], dict):
-                                max_temp = day_forecast['temp'].get('max', 0)
-                                min_temp = day_forecast['temp'].get('min', 0)
-                            else:
-                                max_temp = day_forecast.get('temp_max', 0) if 'temp_max' in day_forecast else 0
-                                min_temp = day_forecast.get('temp_min', 0) if 'temp_min' in day_forecast else 0
-                            
-                            # Safely get precipitation probability
-                            pop = day_forecast.get('pop', 0)
-                            pop_formatted = f"{pop * 100:.0f}%" if isinstance(pop, (int, float)) else "N/A"
-                            
-                            # Safely get wind speed
-                            wind_speed = day_forecast.get('wind_speed', 0)
-                            
-                            forecast_items.append(f"""
-                            <div class="five-day-forecast-item">
-                                <div style="font-weight: bold;">{date}</div>
-                                <div style="font-size: 2rem; margin: 5px 0;">{icon}</div>
-                                <div style="font-size: 0.9rem; margin-bottom: 5px;">{weather_desc}</div>
-                                <div>
-                                    <span style="color: #d63031; font-weight: bold;">{max_temp:.1f}°C</span> / 
-                                    <span style="color: #0984e3;">{min_temp:.1f}°C</span>
-                                </div>
-                                <div style="display: flex; justify-content: space-around; font-size: 0.8rem; margin-top: 5px;">
-                                    <div>🌧️ {pop_formatted}</div>
-                                    <div>💨 {wind_speed} km/h</div>
-                                </div>
-                            </div>
-                            """)
-                        except Exception as e:
-                            # If there's an error with this day's forecast, show a simplified version
-                            forecast_items.append(f"""
-                            <div class="five-day-forecast-item">
-                                <div style="font-weight: bold;">Day {i+1}</div>
-                                <div style="font-size: 2rem; margin: 5px 0;">🌡️</div>
-                                <div style="font-size: 0.9rem;">Forecast data unavailable</div>
-                            </div>
-                            """)
-                            print(f"Error displaying forecast day {i}: {e}")
-                    
-                    if forecast_items:
-                        st.markdown(f"""
-                        <div class="five-day-forecast-container">
-                            {''.join(forecast_items)}
-                        </div>
-                        """, unsafe_allow_html=True)
+                # 5-day forecast has been removed to fix HTML rendering issues
             elif WEATHER_API_KEY == "YOUR_API_KEY_HERE":
                 st.info("⚠️ To enable weather information, please add your OpenWeatherMap API key to the .env file.")
                 st.markdown("""
