@@ -1,0 +1,232 @@
+/* Custom CSS for Norway Trip App */
+.stApp {
+    background-color: #f5f7fa;
+    color: #333333; /* Default text color for the entire app */
+}
+
+.main-header {
+    color: #1E3A8A;
+    font-family: 'Helvetica Neue', sans-serif;
+    padding: 0.7rem 0;
+    text-align: center;
+    background-color: rgba(255, 255, 255, 0.8);
+    border-radius: 10px;
+    margin-bottom: 1rem;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.day-nav-buttons button {
+    border-radius: 20px !important;
+    font-weight: bold !important;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1) !important;
+    transition: all 0.3s ease !important;
+}
+
+.day-nav-buttons button:hover {
+    transform: translateY(-2px) !important;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15) !important;
+}
+
+.location-header {
+    background: linear-gradient(90deg, #1a73e8, #1E3A8A);
+    color: white !important;
+    padding: 0.5rem !important;
+    border-radius: 8px;
+    margin-top: 0.5rem !important;
+    font-size: 1.3rem !important;
+}
+
+.date-subheader {
+    color: #333333; /* Darker color for better visibility */
+    font-style: italic;
+    margin-bottom: 0.7rem !important;
+    font-size: 0.9rem !important;
+}
+
+.section-header {
+    background-color: #f0f4f8;
+    padding: 0.3rem 0.5rem;
+    border-left: 4px solid #1a73e8;
+    margin-top: 0.8rem !important;
+    margin-bottom: 0.5rem !important;
+    border-radius: 0 8px 8px 0;
+    color: #333333; /* Darker color for better visibility */
+    font-size: 1.1rem !important;
+}
+
+.image-container {
+    background-color: white;
+    padding: 0.3rem;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+    margin-bottom: 0.5rem !important;
+}
+
+/* Style for ensuring images display at the ideal size like the circled one */
+.large-image img {
+    min-height: 240px;
+    object-fit: cover;
+}
+
+/* Style for single images to display at the ideal size */
+.stColumns [data-testid="column"]:nth-child(2) .large-image img {
+    min-height: 300px;
+    max-height: 500px;
+    object-fit: contain;
+}
+
+.map-link-container {
+    background-color: #ffffff;
+    padding: 1rem;
+    border-radius: 8px;
+    margin-top: 1rem !important;
+    margin-bottom: 1rem !important;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+    color: #333333; /* Ensure text is visible */
+}
+
+.map-link-container a {
+    text-decoration: none !important;
+    color: #1a73e8 !important;
+}
+
+.sidebar-header {
+    background-color: #1E3A8A;
+    color: white !important;
+    padding: 1rem;
+    border-radius: 5px;
+    margin-top: 0.5rem !important;
+}
+
+.sidebar-button {
+    border-radius: 5px !important;
+    margin: 0.25rem 0 !important;
+    transition: all 0.2s ease !important;
+}
+
+.sidebar-button:hover {
+    background-color: #f0f4f8 !important;
+}
+
+.checklist-container {
+    background-color: white;
+    padding: 1rem;
+    border-radius: 8px;
+    margin-top: 2rem;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+}
+
+.checklist-category {
+    font-weight: bold;
+    padding: 0.5rem;
+    margin-top: 0.5rem;
+    border-radius: 4px;
+    color: #333333; /* Dark text color for categories */
+}
+
+.essentials-category {
+    background-color: #00ffff99;
+}
+
+.entertainment-category {
+    background-color: #ccccff;
+}
+
+.protection-category {
+    background-color: #ccffcc;
+}
+
+.hiking-category {
+    background-color: #ffcccc;
+}
+
+.checklist-item {
+    padding: 0.25rem 0.5rem;
+    color: #333333; /* Dark text color for checklist items */
+}
+
+/* New content card for more organized display */
+.content-card {
+    background-color: white;
+    padding: 10px 15px;
+    border-radius: 10px;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    margin-bottom: 12px;
+}
+
+.content-card h4 {
+    color: #1E3A8A;
+    font-size: 1rem;
+    margin-bottom: 6px;
+    border-bottom: 1px solid #e0e0e0;
+    padding-bottom: 5px;
+}
+
+.card-content {
+    color: #333333;
+}
+
+/* Improved image layout */
+.stImage img {
+    border-radius: 6px;
+    transition: transform 0.3s ease;
+}
+
+.stImage img:hover {
+    transform: scale(1.02);
+}
+
+/* Improved image captions */
+.stImage [data-testid="caption"] {
+    font-size: 0.8rem;
+    text-align: center;
+    margin-top: 0.2rem;
+    color: #555;
+}
+
+/* Make buttons more compact */
+.day-nav-buttons button {
+    min-width: 40px !important;
+    height: 40px !important;
+    padding: 0px !important;
+}
+
+/* Improved location links */
+.location-link {
+    text-decoration: none !important;
+    display: block;
+}
+
+.location-link-box {
+    display: flex;
+    align-items: center;
+    background-color: #f0f4f8;
+    padding: 10px;
+    margin-bottom: 10px;
+    border-radius: 8px;
+    transition: all 0.2s ease;
+    border-left: 3px solid #1a73e8;
+}
+
+.location-link-box:hover {
+    background-color: #e6edf8;
+    transform: translateX(3px);
+}
+
+.location-link-number {
+    background-color: #1a73e8;
+    color: white;
+    width: 25px;
+    height: 25px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+    margin-right: 12px;
+}
+
+.location-link-name {
+    color: #333333;
+    font-weight: 500;
+}
