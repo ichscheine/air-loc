@@ -12,3 +12,5 @@ requests
 textblob
 osmnx
 pyarrow
+statsmodels=0.14.4
+python-dotenv
