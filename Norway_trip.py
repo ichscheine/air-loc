@@ -8,10 +8,176 @@ import subprocess
 import platform
 from PIL import Image
 import io
+import requests
+from datetime import datetime, timedelta
+import time
+from dotenv import load_dotenv
+
+# Load environment variables from .env file
+load_dotenv()
+
+# Get API key from environment variable
+WEATHER_API_KEY = os.getenv("WEATHER_API_KEY", "YOUR_API_KEY_HERE")
 
 # ------------------------------
 # UTILITY FUNCTIONS
 # ------------------------------
+
+def get_location_coordinates(location_name):
+    """
+    Get coordinates for a location using OpenWeatherMap Geocoding API
+    """
+    try:
+        # Predefined coordinates for problematic locations
+        location_coords = {
+            "Nusfjord?": (68.0352, 13.3491),
+            "Kjerag Hike": (59.0350, 6.5875),
+            "Pulpit Rock": (58.9861, 6.1899),
+            "Henningsvær + Fløya": (68.1484, 14.2015),
+            "Drive to Geirangerfjorden": (62.1049, 7.0752),
+            "Geirangerfjord Cruise": (62.1049, 7.0752),
+            "Geirangerfjord → Ålesund": (62.1049, 7.0752),
+            "Return Home": (58.8819, 5.6264),  # Stavanger Airport coordinates
+            "Fly EVE → Bergen": (60.3943, 5.3259),  # Bergen coordinates
+            "Bergen → Ålesund": (62.4722, 6.1524),  # Ålesund coordinates
+            "Fly Ålesund → Stavanger": (58.9700, 5.7331),  # Stavanger coordinates
+            "Haukland Beach – Uttakleiv Beach – Offersøykammen Hike": (68.1925, 13.5157),  # Haukland Beach
+            "Steffenakken – Reinebringen – Hamnøy – Ramberg": (67.9395, 13.1369)  # Hamnøy
+        }
+        
+        # Check if we have predefined coordinates for this location
+        if location_name in location_coords:
+            return location_coords[location_name]
+            
+        # Clean up location name for API query
+        query = location_name.split('→')[0].strip() if '→' in location_name else location_name
+        query = query.split('–')[0].strip() if '–' in query else query
+        query = query.split('+')[0].strip() if '+' in query else query
+        
+        # For special cases with airport codes
+        if "IAD" in query:
+            return 38.9531, -77.4565  # Washington Dulles coordinates
+        if "FRA" in query:
+            return 50.0379, 8.5622    # Frankfurt Airport coordinates
+        if "EVE" in query:
+            return 68.4891, 16.6780   # Evenes Airport coordinates
+        
+        # Add Norway to ensure we get the right locations
+        if "Norway" not in query and query not in ["Return Home"]:
+            query += ", Norway"
+            
+        geocoding_url = f"http://api.openweathermap.org/geo/1.0/direct?q={query}&limit=1&appid={WEATHER_API_KEY}"
+        response = requests.get(geocoding_url)
+        data = response.json()
+        
+        if data and len(data) > 0:
+            return data[0]['lat'], data[0]['lon']
+        
+        # If we couldn't get coordinates, try a simpler approach with just the first word
+        if ' ' in query:
+            simpler_query = query.split(' ')[0] + ", Norway"
+            geocoding_url = f"http://api.openweathermap.org/geo/1.0/direct?q={simpler_query}&limit=1&appid={WEATHER_API_KEY}"
+            response = requests.get(geocoding_url)
+            data = response.json()
+            
+            if data and len(data) > 0:
+                return data[0]['lat'], data[0]['lon']
+        
+        return None
+    except Exception as e:
+        print(f"Error getting coordinates for {location_name}: {e}")
+        return None
+
+def get_current_weather(lat, lon):
+    """
+    Get current weather for coordinates
+    """
+    try:
+        weather_url = f"https://api.openweathermap.org/data/2.5/weather?lat={lat}&lon={lon}&units=metric&appid={WEATHER_API_KEY}"
+        response = requests.get(weather_url)
+        data = response.json()
+        
+        # Check for API error responses
+        if 'cod' in data and data['cod'] != 200:
+            print(f"Weather API error: {data.get('message', 'Unknown error')}")
+        
+        return data
+    except Exception as e:
+        print(f"Error getting current weather: {e}")
+        return None
+
+def get_forecast(lat, lon):
+    """
+    Get 7-day forecast for coordinates
+    """
+    try:
+        # Note: OpenWeatherMap has renamed onecall to 3.0/onecall, let's try both
+        try:
+            # Include hourly data for detailed hourly forecast
+            forecast_url = f"https://api.openweathermap.org/data/3.0/onecall?lat={lat}&lon={lon}&exclude=minutely&units=metric&appid={WEATHER_API_KEY}"
+            response = requests.get(forecast_url)
+            data = response.json()
+            
+            # Debug info
+            print(f"Forecast API response for {lat},{lon}: Status {response.status_code}")
+            
+            # Check if we got a valid response
+            if 'cod' in data and data['cod'] != 200:
+                # Fall back to the old endpoint
+                raise Exception(f"New API endpoint error: {data.get('message', 'Unknown error')}")
+            
+            # Verify that we have the expected data structure
+            if 'daily' not in data or 'hourly' not in data:
+                print(f"Unexpected data structure in API response: {list(data.keys())}")
+                raise Exception("Missing daily or hourly data")
+                
+            return data
+        except Exception as e:
+            # Try the legacy endpoint if the new one fails
+            print(f"Trying legacy forecast endpoint: {e}")
+            forecast_url = f"https://api.openweathermap.org/data/2.5/onecall?lat={lat}&lon={lon}&exclude=minutely&units=metric&appid={WEATHER_API_KEY}"
+            response = requests.get(forecast_url)
+            data = response.json()
+            
+            # Debug info for legacy endpoint
+            print(f"Legacy forecast API response for {lat},{lon}: Status {response.status_code}")
+            
+            # Verify data structure
+            if response.status_code == 200 and 'daily' in data and 'hourly' in data:
+                return data
+            else:
+                print(f"Legacy endpoint error: {data.get('message', 'Missing daily/hourly data')}")
+                return None
+            
+    except Exception as e:
+        print(f"Error getting forecast: {e}")
+        return None
+
+def get_weather_icon(icon_code):
+    """
+    Map OpenWeatherMap icon codes to emoji for better display
+    """
+    icons = {
+        "01d": "☀️",  # clear sky day
+        "01n": "🌙",  # clear sky night
+        "02d": "⛅",  # few clouds day
+        "02n": "☁️",  # few clouds night
+        "03d": "☁️",  # scattered clouds
+        "03n": "☁️",
+        "04d": "☁️",  # broken clouds
+        "04n": "☁️",
+        "09d": "🌧️",  # shower rain
+        "09n": "🌧️",
+        "10d": "🌦️",  # rain day
+        "10n": "🌧️",  # rain night
+        "11d": "⛈️",  # thunderstorm
+        "11n": "⛈️",
+        "13d": "❄️",  # snow
+        "13n": "❄️",
+        "50d": "🌫️",  # mist
+        "50n": "🌫️"
+    }
+    return icons.get(icon_code, "🌡️")
 
 def load_high_quality_image(image_path):
     """
@@ -341,7 +507,7 @@ st.set_page_config(page_title="Norway Adventure 2025", layout="wide")
 with open('style.css') as f:
     css_content = f.read()
 
-# Add additional CSS for high-quality images
+# Add additional CSS for high-quality images and weather display
 css_content += """
 /* High-quality image rendering enhancements */
 .high-quality-image img {
@@ -350,6 +516,110 @@ css_content += """
     -webkit-backface-visibility: hidden;
     -ms-interpolation-mode: bicubic;
     transform: translateZ(0);
+}
+
+/* Weather display styling */
+.weather-card {
+    background: linear-gradient(to right, #f5f7fa, #e4e7eb);
+}
+
+.forecast-day {
+    background-color: #fff;
+    border-radius: 8px;
+    padding: 10px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    margin-bottom: 10px;
+    height: 100%;
+    transition: transform 0.2s;
+}
+
+.forecast-day:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+}
+
+.hourly-forecast-item {
+    transition: transform 0.2s;
+}
+
+.hourly-forecast-item:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+}
+
+/* Add styles for 3-day forecast in the sidebar */
+.forecast-day-compact {
+    background-color: #fff;
+    border-radius: 8px;
+    padding: 10px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    margin-bottom: 5px;
+    text-align: center;
+    flex: 1;
+}
+
+/* Styling for location links in the sidebar */
+.location-link-box {
+    display: flex;
+    align-items: center;
+    background-color: #fff;
+    border-radius: 8px;
+    padding: 8px;
+    transition: all 0.2s;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.location-link-box:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+    background-color: #f0f8ff;
+}
+
+.location-link-number {
+    background-color: #3498db;
+    color: white;
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-weight: bold;
+    margin-right: 10px;
+    flex-shrink: 0;
+}
+
+.location-link-name {
+    font-size: 0.9rem;
+    font-weight: 500;
+}
+
+/* Add responsive design for forecast and location links on mobile */
+@media (max-width: 768px) {
+    .forecast-day {
+        margin-bottom: 8px;
+        padding: 8px;
+    }
+    
+    .forecast-day-compact {
+        padding: 5px;
+        margin-bottom: 5px;
+    }
+    
+    .location-link-box {
+        padding: 6px;
+        margin-bottom: 6px;
+    }
+    
+    .location-link-number {
+        width: 20px;
+        height: 20px;
+        font-size: 0.8rem;
+    }
+    
+    .location-link-name {
+        font-size: 0.8rem;
+    }
 }
 """
 
@@ -496,6 +766,324 @@ for day in trip_data:
         with prog_col2:
             st.markdown(f"<div style='text-align: center; font-size: 0.7rem; margin-top: -5px;'>{current_index + 1}/{len(trip_data)}</div>", unsafe_allow_html=True)
         
+        # Weather information - Moved before itinerary details
+        coordinates = get_location_coordinates(day["location"])
+        if coordinates:
+            lat, lon = coordinates
+            weather = get_current_weather(lat, lon)
+            if weather and WEATHER_API_KEY != "YOUR_API_KEY_HERE":
+                icon = get_weather_icon(weather['weather'][0]['icon'])
+                
+                # Create a 2-column layout for current weather and 3-day forecast
+                col1, col2 = st.columns([1, 1])
+                
+                with col1:
+                    st.markdown(
+                        f"""<div class="content-card weather-card">
+                            <h4>🌤️ Current Weather</h4>
+                            <div class="card-content">
+                                <div style="display: flex; align-items: center;">
+                                    <div style="font-size: 3rem; margin-right: 15px;">
+                                        {icon}
+                                    </div>
+                                    <div>
+                                        <div style="font-weight: bold; font-size: 1.1rem;">{weather['weather'][0]['description'].capitalize()}</div>
+                                        <div style="font-size: 1.5rem; font-weight: bold; margin: 5px 0;">{weather['main']['temp']}°C</div>
+                                        <div style="font-size: 0.9rem;">Feels like: {weather['main']['feels_like']}°C</div>
+                                    </div>
+                                </div>
+                                <div style="display: flex; justify-content: space-between; margin-top: 10px;">
+                                    <div style="text-align: center; flex: 1;">
+                                        <div style="font-size: 0.9rem;">Humidity</div>
+                                        <div style="font-weight: bold;">{weather['main']['humidity']}%</div>
+                                    </div>
+                                    <div style="text-align: center; flex: 1;">
+                                        <div style="font-size: 0.9rem;">Wind</div>
+                                        <div style="font-weight: bold;">{weather['wind']['speed']} km/h</div>
+                                    </div>
+                                    <div style="text-align: center; flex: 1;">
+                                        <div style="font-size: 0.9rem;">Pressure</div>
+                                        <div style="font-weight: bold;">{weather['main']['pressure']} hPa</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>""", 
+                        unsafe_allow_html=True
+                    )
+                
+                # Get forecast data
+                forecast = get_forecast(lat, lon)
+                
+                # Always display 3-day forecast in the second column
+                with col2:
+                    if forecast and 'daily' in forecast and len(forecast['daily']) > 0:
+                        st.markdown(
+                            f"""<div class="content-card weather-card">
+                                <h4>📅 3-Day Forecast</h4>
+                                <div class="card-content">
+                                    <div style="display: flex; flex-direction: column; gap: 8px;">
+                            """, 
+                            unsafe_allow_html=True
+                        )
+                        
+                        # Display 3-day forecast
+                        forecast_days = []
+                        for i, day_forecast in enumerate(forecast['daily'][:3]):  # Show 3 days
+                            try:
+                                # Format the date
+                                date = datetime.fromtimestamp(day_forecast['dt']).strftime("%a %d")
+                                
+                                # Safely get weather icon
+                                icon_code = day_forecast['weather'][0]['icon'] if 'weather' in day_forecast and day_forecast['weather'] else '01d'
+                                icon = get_weather_icon(icon_code)
+                                
+                                # Safely get temperature values
+                                if 'temp' in day_forecast and isinstance(day_forecast['temp'], dict):
+                                    max_temp = day_forecast['temp'].get('max', 0)
+                                    min_temp = day_forecast['temp'].get('min', 0)
+                                else:
+                                    max_temp = day_forecast.get('temp_max', 0) if 'temp_max' in day_forecast else 0
+                                    min_temp = day_forecast.get('temp_min', 0) if 'temp_min' in day_forecast else 0
+                                
+                                # Safely get precipitation probability
+                                pop = day_forecast.get('pop', 0)
+                                pop_formatted = f"{pop * 100:.0f}%" if isinstance(pop, (int, float)) else "N/A"
+                                
+                                # Safely get weather description
+                                weather_desc = day_forecast['weather'][0]['description'].capitalize() if 'weather' in day_forecast and day_forecast['weather'] else 'Unknown'
+                                
+                                forecast_days.append(f"""
+                                    <div class="forecast-day-compact">
+                                        <div style="font-weight: bold;">{date}</div>
+                                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                                            <div style="font-size: 1.8rem; margin-right: 5px;">{icon}</div>
+                                            <div style="text-align: left;">
+                                                <div style="font-size: 0.8rem;">{weather_desc}</div>
+                                                <div>
+                                                    <span style="color: #d63031; font-weight: bold;">{max_temp:.1f}°C</span> / 
+                                                    <span style="color: #0984e3;">{min_temp:.1f}°C</span>
+                                                </div>
+                                                <div style="font-size: 0.8rem;">🌧️ {pop_formatted}</div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                """)
+                            except Exception as e:
+                                forecast_days.append(f"""
+                                    <div class="forecast-day-compact">
+                                        <div style="font-weight: bold;">Day {i+1}</div>
+                                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                                            <div style="font-size: 1.8rem; margin-right: 5px;">🌡️</div>
+                                            <div style="text-align: left;">
+                                                <div style="font-size: 0.8rem;">Unknown</div>
+                                                <div>--°C / --°C</div>
+                                                <div style="font-size: 0.8rem;">--</div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                """)
+                                print(f"Error in 3-day forecast for day {i}: {e}")
+                        
+                        st.markdown(
+                            f"""
+                                    {''.join(forecast_days)}
+                                    </div>
+                                </div>
+                            </div>
+                            """, 
+                            unsafe_allow_html=True
+                        )
+                    else:
+                        st.markdown(
+                            f"""<div class="content-card weather-card">
+                                <h4>📅 Forecast Unavailable</h4>
+                                <div class="card-content" style="text-align: center;">
+                                    <p>Weather forecast data is not available for this location.</p>
+                                </div>
+                            </div>""", 
+                            unsafe_allow_html=True
+                        )
+                
+                # Show hourly forecast for next 12 hours if available
+                if forecast and 'hourly' in forecast and len(forecast['hourly']) > 0:
+                    try:
+                        st.markdown('<h4 class="section-header">⏱️ Hourly Forecast</h4>', unsafe_allow_html=True)
+                        
+                        # Create scrollable container for hourly forecast
+                        st.markdown("""
+                        <style>
+                        .hourly-forecast-container {
+                            display: flex;
+                            overflow-x: auto;
+                            padding: 10px 0;
+                            gap: 15px;
+                            margin-bottom: 20px;
+                            -webkit-overflow-scrolling: touch; /* Smooth scrolling on iOS */
+                        }
+                        .hourly-forecast-item {
+                            min-width: 90px;
+                            flex: 0 0 auto;
+                            background-color: #fff;
+                            border-radius: 8px;
+                            padding: 10px;
+                            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+                            text-align: center;
+                        }
+                        </style>
+                        """, unsafe_allow_html=True)
+                        
+                        hourly_items = []
+                        for hour_data in forecast['hourly'][:12]:  # Show next 12 hours
+                            try:
+                                # Safely get timestamp
+                                dt = hour_data.get('dt', 0)
+                                hour_time = datetime.fromtimestamp(dt).strftime("%H:%M")
+                                
+                                # Safely get weather icon
+                                weather_data = hour_data.get('weather', [{'icon': '01d'}])
+                                icon_code = weather_data[0].get('icon', '01d') if weather_data else '01d'
+                                hour_icon = get_weather_icon(icon_code)
+                                
+                                # Safely get temperature
+                                temp = hour_data.get('temp', 'N/A')
+                                temp_display = f"{temp:.1f}°C" if isinstance(temp, (int, float)) else temp
+                                
+                                # Safely get weather description
+                                weather_desc = weather_data[0].get('description', 'Unknown').capitalize() if weather_data else 'Unknown'
+                                
+                                hourly_items.append(f"""
+                                <div class="hourly-forecast-item">
+                                    <div style="font-weight: bold;">{hour_time}</div>
+                                    <div style="font-size: 1.8rem;">{hour_icon}</div>
+                                    <div>{temp_display}</div>
+                                    <div style="font-size: 0.8rem;">{weather_desc}</div>
+                                </div>
+                                """)
+                            except Exception as e:
+                                print(f"Error processing hourly forecast item: {e}")
+                                # Add a placeholder for failed items
+                                hourly_items.append(f"""
+                                <div class="hourly-forecast-item">
+                                    <div style="font-weight: bold;">--:--</div>
+                                    <div style="font-size: 1.8rem;">🌡️</div>
+                                    <div>--°C</div>
+                                    <div style="font-size: 0.8rem;">Data unavailable</div>
+                                </div>
+                                """)
+                        
+                        if hourly_items:
+                            st.markdown(f"""
+                            <div class="hourly-forecast-container">
+                                {''.join(hourly_items)}
+                            </div>
+                            """, unsafe_allow_html=True)
+                        else:
+                            st.info("Hourly forecast data is not available.")
+                    except Exception as e:
+                        st.error(f"Could not display hourly forecast: {e}")
+                        print(f"Error displaying hourly forecast: {e}")
+                
+                # Show 5-day forecast
+                if forecast and 'daily' in forecast and len(forecast['daily']) > 0:
+                    st.markdown('<h4 class="section-header">📅 5-Day Forecast</h4>', unsafe_allow_html=True)
+                    
+                    # Create a container for the 5-day forecast
+                    st.markdown("""
+                    <style>
+                    .five-day-forecast-container {
+                        display: flex;
+                        justify-content: space-between;
+                        gap: 10px;
+                        margin-bottom: 20px;
+                        flex-wrap: wrap;
+                    }
+                    .five-day-forecast-item {
+                        flex: 1;
+                        min-width: 130px;
+                        background-color: #fff;
+                        border-radius: 8px;
+                        padding: 10px;
+                        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+                        text-align: center;
+                        margin-bottom: 10px;
+                    }
+                    @media (max-width: 768px) {
+                        .five-day-forecast-item {
+                            min-width: 45%;
+                        }
+                    }
+                    </style>
+                    """, unsafe_allow_html=True)
+                    
+                    forecast_items = []
+                    for i, day_forecast in enumerate(forecast['daily'][:5]):  # Show up to 5 days
+                        try:
+                            # Format the date
+                            date = datetime.fromtimestamp(day_forecast['dt']).strftime("%a %d %b")
+                            
+                            # Safely get weather icon
+                            icon_code = day_forecast['weather'][0]['icon'] if 'weather' in day_forecast and day_forecast['weather'] else '01d'
+                            icon = get_weather_icon(icon_code)
+                            
+                            # Safely get weather description
+                            weather_desc = day_forecast['weather'][0]['description'].capitalize() if 'weather' in day_forecast and day_forecast['weather'] else 'Unknown'
+                            
+                            # Safely get temperature values
+                            if 'temp' in day_forecast and isinstance(day_forecast['temp'], dict):
+                                max_temp = day_forecast['temp'].get('max', 0)
+                                min_temp = day_forecast['temp'].get('min', 0)
+                            else:
+                                max_temp = day_forecast.get('temp_max', 0) if 'temp_max' in day_forecast else 0
+                                min_temp = day_forecast.get('temp_min', 0) if 'temp_min' in day_forecast else 0
+                            
+                            # Safely get precipitation probability
+                            pop = day_forecast.get('pop', 0)
+                            pop_formatted = f"{pop * 100:.0f}%" if isinstance(pop, (int, float)) else "N/A"
+                            
+                            # Safely get wind speed
+                            wind_speed = day_forecast.get('wind_speed', 0)
+                            
+                            forecast_items.append(f"""
+                            <div class="five-day-forecast-item">
+                                <div style="font-weight: bold;">{date}</div>
+                                <div style="font-size: 2rem; margin: 5px 0;">{icon}</div>
+                                <div style="font-size: 0.9rem; margin-bottom: 5px;">{weather_desc}</div>
+                                <div>
+                                    <span style="color: #d63031; font-weight: bold;">{max_temp:.1f}°C</span> / 
+                                    <span style="color: #0984e3;">{min_temp:.1f}°C</span>
+                                </div>
+                                <div style="display: flex; justify-content: space-around; font-size: 0.8rem; margin-top: 5px;">
+                                    <div>🌧️ {pop_formatted}</div>
+                                    <div>💨 {wind_speed} km/h</div>
+                                </div>
+                            </div>
+                            """)
+                        except Exception as e:
+                            # If there's an error with this day's forecast, show a simplified version
+                            forecast_items.append(f"""
+                            <div class="five-day-forecast-item">
+                                <div style="font-weight: bold;">Day {i+1}</div>
+                                <div style="font-size: 2rem; margin: 5px 0;">🌡️</div>
+                                <div style="font-size: 0.9rem;">Forecast data unavailable</div>
+                            </div>
+                            """)
+                            print(f"Error displaying forecast day {i}: {e}")
+                    
+                    if forecast_items:
+                        st.markdown(f"""
+                        <div class="five-day-forecast-container">
+                            {''.join(forecast_items)}
+                        </div>
+                        """, unsafe_allow_html=True)
+            elif WEATHER_API_KEY == "YOUR_API_KEY_HERE":
+                st.info("⚠️ To enable weather information, please add your OpenWeatherMap API key to the .env file.")
+                st.markdown("""
+                To get your API key:
+                1. Sign up at [OpenWeatherMap](https://openweathermap.org/api) (they have a free tier)
+                2. Get your API key
+                3. Create a `.env` file in the project root and add: `WEATHER_API_KEY=your_api_key_here`
+                """)
+        
         # Display details with improved formatting and more compact design
         st.markdown(
             f"""<div class="content-card">
@@ -504,129 +1092,132 @@ for day in trip_data:
             </div>""", 
             unsafe_allow_html=True
         )
+                
         
-        if day["images"]:
-            st.markdown('<h3 class="section-header">📸 Images</h3>', unsafe_allow_html=True)
-            
-            # Define captions based on the day's activities
-            captions = {
-                "2025-08-02 (Saturday)": ["Sunset view from airplane approaching Norway"],
-                "2025-08-03 (Sunday)": ["Scenic coastal road in Lofoten Islands", "Mountain views along E10 to Lofoten"],
-                "2025-08-04 (Monday)": ["Haukland Beach with turquoise waters in summer", "Uttakleiv Beach and its iconic boulders", "Panoramic view from Offersøykammen hike"],
-                "2025-08-05 (Tuesday)": ["Viewpoint over Lofoten's dramatic mountains", "Red rorbuer fishing cabins in Hamnøy", "Scenic Ramberg Beach with mountain backdrop"],
-                "2025-08-06 (Wednesday)": ["Traditional fishing village of Nusfjord in summer", "Sea eagle safari views in Lofoten"],
-                "2025-08-07 (Thursday)": ["Henningsvær harbor village with mountains", "View from Fløya hiking trail in summer"],
-                "2025-08-08 (Friday)": ["Bergen's colorful Bryggen Wharf in summer", "Bergen harbor with boats in summer sunshine"],
-                "2025-08-09 (Saturday)": ["Bryggen Wharf historic buildings in summer", "View from Mount Fløyen over Bergen", "Bergen fish market in summer"],
-                "2025-08-10 (Sunday)": ["Summer view of Geirangerfjord UNESCO site", "Flydalsjuvet viewpoint over Geirangerfjord"],
-                "2025-08-11 (Monday)": ["Seven Sisters waterfall in Geirangerfjord", "Cruise boat in summer on Geirangerfjord"],
-                "2025-08-12 (Tuesday)": ["Canyoning adventure in Geirangerfjord", "Ålesund city view with art nouveau architecture"],
-                "2025-08-13 (Wednesday)": ["Colorful wooden houses in Stavanger Old Town", "Stavanger harbor in summer sunshine"],
-                "2025-08-14 (Thursday)": ["Kjeragbolten boulder wedged between cliffs", "Summer hiking trail to Kjerag"],
-                "2025-08-15 (Friday)": ["Pulpit Rock (Preikestolen) in summer", "View of Lysefjord from Pulpit Rock in August"],
-                "2025-08-16 (Saturday)": ["Final view of Norwegian fjords and mountains"]
-            }
-            
-            # Get captions for this day
-            day_captions = captions.get(day["date"], [])
-            
-            # Use default captions if none are defined for this day
-            if not day_captions or len(day_captions) < len(day["images"]):
-                day_captions = [f"Norway Scene {i+1}" for i in range(len(day["images"]))]
-            
-            # Use a consistent layout for better image sizing
-            num_images = len(day["images"])
-            if num_images > 4:
-                # Use 3 columns for 5+ images
-                cols = st.columns([1, 1, 1])
-            elif num_images > 1:
-                # Use 2 columns for 2-4 images
-                cols = st.columns([1, 1])
+        # Create a section for images and location links side by side
+        st.markdown('<h3 class="section-header">📸 Images & Locations</h3>', unsafe_allow_html=True)
+        
+        # Create a two-column layout for images and location links
+        image_col, link_col = st.columns([3, 1])  # 3:1 ratio to give more space to images
+        
+        with image_col:
+            if day["images"]:
+                # Define captions based on the day's activities
+                captions = {
+                    "2025-08-02 (Saturday)": ["Sunset view from airplane approaching Norway"],
+                    "2025-08-03 (Sunday)": ["Scenic coastal road in Lofoten Islands", "Mountain views along E10 to Lofoten"],
+                    "2025-08-04 (Monday)": ["Haukland Beach with turquoise waters in summer", "Uttakleiv Beach and its iconic boulders", "Panoramic view from Offersøykammen hike"],
+                    "2025-08-05 (Tuesday)": ["Viewpoint over Lofoten's dramatic mountains", "Red rorbuer fishing cabins in Hamnøy", "Scenic Ramberg Beach with mountain backdrop"],
+                    "2025-08-06 (Wednesday)": ["Traditional fishing village of Nusfjord in summer", "Sea eagle safari views in Lofoten"],
+                    "2025-08-07 (Thursday)": ["Henningsvær harbor village with mountains", "View from Fløya hiking trail in summer"],
+                    "2025-08-08 (Friday)": ["Bergen's colorful Bryggen Wharf in summer", "Bergen harbor with boats in summer sunshine"],
+                    "2025-08-09 (Saturday)": ["Bryggen Wharf historic buildings in summer", "View from Mount Fløyen over Bergen", "Bergen fish market in summer"],
+                    "2025-08-10 (Sunday)": ["Summer view of Geirangerfjord UNESCO site", "Flydalsjuvet viewpoint over Geirangerfjord"],
+                    "2025-08-11 (Monday)": ["Seven Sisters waterfall in Geirangerfjord", "Cruise boat in summer on Geirangerfjord"],
+                    "2025-08-12 (Tuesday)": ["Canyoning adventure in Geirangerfjord", "Ålesund city view with art nouveau architecture"],
+                    "2025-08-13 (Wednesday)": ["Colorful wooden houses in Stavanger Old Town", "Stavanger harbor in summer sunshine"],
+                    "2025-08-14 (Thursday)": ["Kjeragbolten boulder wedged between cliffs", "Summer hiking trail to Kjerag"],
+                    "2025-08-15 (Friday)": ["Pulpit Rock (Preikestolen) in summer", "View of Lysefjord from Pulpit Rock in August"],
+                    "2025-08-16 (Saturday)": ["Final view of Norwegian fjords and mountains"]
+                }
+                
+                # Get captions for this day
+                day_captions = captions.get(day["date"], [])
+                
+                # Use default captions if none are defined for this day
+                if not day_captions or len(day_captions) < len(day["images"]):
+                    day_captions = [f"Norway Scene {i+1}" for i in range(len(day["images"]))]
+                
+                # Use a consistent layout for better image sizing
+                num_images = len(day["images"])
+                if num_images > 3:
+                    # Use 3 columns for 4+ images
+                    cols = st.columns([1, 1, 1])
+                elif num_images > 1:
+                    # Use 2 columns for 2-3 images
+                    cols = st.columns([1, 1])
+                else:
+                    # For single images, use a full-width column
+                    cols = st.columns([1])  # Full-width for better image display
+                
+                for i, img_path in enumerate(day["images"]):
+                    caption = day_captions[i] if i < len(day_captions) else f"Norway Scene {i+1}"
+                    
+                    # For multi-column layout, distribute across columns
+                    if num_images > 1:
+                        col_idx = i % len(cols)
+                    else:
+                        # For single image, always use the center column
+                        col_idx = 0
+                    
+                    # Check if there's a high-resolution version in original_backup folder
+                    high_res_path = img_path.replace("Norway_gallery/", "Norway_gallery/original_backup/")
+                    actual_path = high_res_path if os.path.exists(high_res_path) else img_path
+                    
+                    # Load image with highest possible quality
+                    high_quality_img = load_high_quality_image(actual_path)
+                    
+                    try:
+                        with cols[col_idx]:
+                            st.markdown('<div class="image-container large-image high-quality-image">', unsafe_allow_html=True)
+                            # For single images, use explicit width for higher quality display
+                            if num_images == 1:
+                                # Use a larger fixed width for single images
+                                st.image(high_quality_img, caption=caption, width=600, output_format="PNG")
+                            else:
+                                # For multiple images, use appropriate width for better quality
+                                st.image(high_quality_img, caption=caption, width=300, output_format="PNG")
+                            st.markdown('</div>', unsafe_allow_html=True)
+                    except Exception as e:
+                        st.error(f"Could not load image: {img_path}")
+                        st.error(f"Error: {e}")
             else:
-                # For single images, use a wider center column that matches the circled image size
-                cols = st.columns([1, 3, 1])  # Wider center column for better image display
-            
-            for i, img_path in enumerate(day["images"]):
-                caption = day_captions[i] if i < len(day_captions) else f"Norway Scene {i+1}"
+                # Display a more friendly message when no images are available
+                st.markdown(
+                    """<div class="content-card">
+                        <h4>📸 No Photos Available</h4>
+                        <div class="card-content" style="text-align:center;">
+                            <p>No photos available for this day yet.</p>
+                            <p>Check the location links for this destination.</p>
+                        </div>
+                    </div>""", 
+                    unsafe_allow_html=True
+                )
+        
+        # Show Google Maps links in the right column
+        with link_col:
+            if day["date"] in norway_locations:
+                st.markdown(
+                    """<div style="background-color: #f9f9f9; border-radius: 8px; padding: 10px;">
+                        <h4 style="margin-top: 0;">📍 Locations</h4>
+                    """, 
+                    unsafe_allow_html=True
+                )
                 
-                # For multi-column layout, distribute across columns
-                if num_images > 1:
-                    col_idx = i % len(cols)
-                else:
-                    # For single image, always use the center column
-                    col_idx = 1
+                # Extract location names from links
+                location_names = []
+                for link in norway_locations[day["date"]]:
+                    # Extract location name from Google Maps URL
+                    match = re.search(r'place/([^/@]+)', link)
+                    if match:
+                        # Clean up the name (replace + with space, etc)
+                        name = match.group(1).replace('+', ' ').replace('_', ' ')
+                        name = re.sub(r'@[\d\.]+,[\d\.]+', '', name)  # Remove coordinates
+                        name = name.replace('/', ' - ')  # Replace slashes
+                        name = ' '.join(word.capitalize() for word in name.split())  # Capitalize words
+                    else:
+                        name = f"Location {i+1}"
+                    location_names.append(name)
                 
-                # Check if there's a high-resolution version in original_backup folder
-                high_res_path = img_path.replace("Norway_gallery/", "Norway_gallery/original_backup/")
-                actual_path = high_res_path if os.path.exists(high_res_path) else img_path
-                
-                # Load image with highest possible quality
-                high_quality_img = load_high_quality_image(actual_path)
-                
-                try:
-                    with cols[col_idx]:
-                        st.markdown('<div class="image-container large-image high-quality-image">', unsafe_allow_html=True)
-                        # For single images, use explicit width for higher quality display
-                        if num_images == 1:
-                            # Use a larger fixed width to ensure higher resolution display
-                            st.image(high_quality_img, caption=caption, width=800, output_format="PNG")
-                        else:
-                            # For multiple images, use explicit width for better quality
-                            st.image(high_quality_img, caption=caption, width=400, output_format="PNG")
-                        st.markdown('</div>', unsafe_allow_html=True)
-                except Exception as e:
-                    st.error(f"Could not load image: {img_path}")
-                    st.error(f"Error: {e}")
-        else:
-            # Display a more friendly message in a card layout
-            st.markdown(
-                """<div class="content-card">
-                    <h4>Photos</h4>
-                    <div class="card-content" style="text-align:center;">
-                        <p>No photos available for this day yet.</p>
-                        <p>Check the Google Maps links below for this location.</p>
-                    </div>
-                </div>""", 
-                unsafe_allow_html=True
-            )
-            
-        # Always show Google Maps links for this location with improved styling
-        if day["date"] in norway_locations:
-            # Create a card-style container for Google Maps links
-            st.markdown(
-                """<div class="content-card">
-                    <h4>📍 Location Links</h4>
-                """, 
-                unsafe_allow_html=True
-            )
-            
-            # Extract location names from links
-            location_names = []
-            for link in norway_locations[day["date"]]:
-                # Extract location name from Google Maps URL
-                match = re.search(r'place/([^/@]+)', link)
-                if match:
-                    # Clean up the name (replace + with space, etc)
-                    name = match.group(1).replace('+', ' ').replace('_', ' ')
-                    name = re.sub(r'@[\d\.]+,[\d\.]+', '', name)  # Remove coordinates
-                    name = name.replace('/', ' - ')  # Replace slashes
-                    name = ' '.join(word.capitalize() for word in name.split())  # Capitalize words
-                else:
-                    name = f"Location {i+1}"
-                location_names.append(name)
-            
-            # Create a neat grid for location links
-            cols = st.columns([1, 1])
-            for i, (link, name) in enumerate(zip(norway_locations[day["date"]], location_names)):
-                col_idx = i % 2
-                with cols[col_idx]:
+                # Create a vertical list of location links
+                for i, (link, name) in enumerate(zip(norway_locations[day["date"]], location_names)):
                     st.markdown(f"""<a href='{link}' target='_blank' class="location-link">
-                        <div class="location-link-box">
+                        <div class="location-link-box" style="margin-bottom: 8px;">
                             <div class="location-link-number">{i+1}</div>
                             <div class="location-link-name">{name}</div>
                         </div>
                     </a>""", unsafe_allow_html=True)
-            
-            st.markdown('</div>', unsafe_allow_html=True)
+                
+                st.markdown('</div>', unsafe_allow_html=True)
         
         break
