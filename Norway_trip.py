@@ -6,6 +6,27 @@ from pathlib import Path
 import re
 import subprocess
 import platform
+from PIL import Image
+import io
+
+# ------------------------------
+# UTILITY FUNCTIONS
+# ------------------------------
+
+def load_high_quality_image(image_path):
+    """
+    Load image from path with highest possible quality
+    """
+    try:
+        # Open image with PIL to preserve quality
+        img = Image.open(image_path)
+        # Convert to bytes to pass directly to streamlit without compression
+        buf = io.BytesIO()
+        img.save(buf, format="PNG", quality=100)
+        return buf.getvalue()
+    except Exception as e:
+        st.error(f"Error loading image: {e}")
+        return image_path  # Fall back to regular path if there's an error
 
 # ------------------------------
 # DATA STRUCTURE FOR YOUR TRIP
@@ -318,7 +339,21 @@ st.set_page_config(page_title="Norway Adventure 2025", layout="wide")
 
 # Load custom CSS
 with open('style.css') as f:
-    st.markdown(f'<style>{f.read()}</style>', unsafe_allow_html=True)
+    css_content = f.read()
+
+# Add additional CSS for high-quality images
+css_content += """
+/* High-quality image rendering enhancements */
+.high-quality-image img {
+    image-rendering: -webkit-optimize-contrast;
+    image-rendering: crisp-edges;
+    -webkit-backface-visibility: hidden;
+    -ms-interpolation-mode: bicubic;
+    transform: translateZ(0);
+}
+"""
+
+st.markdown(f'<style>{css_content}</style>', unsafe_allow_html=True)
 
 # Define the checklist data
 checklist = {
@@ -525,15 +560,19 @@ for day in trip_data:
                 high_res_path = img_path.replace("Norway_gallery/", "Norway_gallery/original_backup/")
                 actual_path = high_res_path if os.path.exists(high_res_path) else img_path
                 
+                # Load image with highest possible quality
+                high_quality_img = load_high_quality_image(actual_path)
+                
                 try:
                     with cols[col_idx]:
-                        st.markdown('<div class="image-container large-image">', unsafe_allow_html=True)
-                        # For single images, use specific width to match circled image size
+                        st.markdown('<div class="image-container large-image high-quality-image">', unsafe_allow_html=True)
+                        # For single images, use explicit width for higher quality display
                         if num_images == 1:
-                            st.image(actual_path, caption=caption, use_container_width=True)
+                            # Use a larger fixed width to ensure higher resolution display
+                            st.image(high_quality_img, caption=caption, width=800, output_format="PNG")
                         else:
-                            # For multiple images, use container width with additional CSS styling
-                            st.image(actual_path, caption=caption, use_container_width=True)
+                            # For multiple images, use explicit width for better quality
+                            st.image(high_quality_img, caption=caption, width=400, output_format="PNG")
                         st.markdown('</div>', unsafe_allow_html=True)
                 except Exception as e:
                     st.error(f"Could not load image: {img_path}")

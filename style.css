@@ -66,13 +66,19 @@
 .large-image img {
     min-height: 240px;
     object-fit: cover;
+    max-width: 100%;
+    image-rendering: -webkit-optimize-contrast;
+    transform: translateZ(0);
 }
 
 /* Style for single images to display at the ideal size */
 .stColumns [data-testid="column"]:nth-child(2) .large-image img {
     min-height: 300px;
-    max-height: 500px;
+    max-height: 600px;
     object-fit: contain;
+    image-rendering: high-quality;
+    -webkit-font-smoothing: antialiased;
+    backface-visibility: hidden;
 }
 
 .map-link-container {
@@ -170,10 +176,23 @@
 .stImage img {
     border-radius: 6px;
     transition: transform 0.3s ease;
+    image-rendering: -webkit-optimize-contrast;
+    image-rendering: crisp-edges;
+    image-resolution: from-image;
 }
 
 .stImage img:hover {
     transform: scale(1.02);
+}
+
+/* Force Streamlit to maintain image quality */
+[data-testid="stImage"] {
+    display: flex;
+    justify-content: center;
+}
+
+[data-testid="stImage"] > div {
+    max-width: 100% !important;
 }
 
 /* Improved image captions */
