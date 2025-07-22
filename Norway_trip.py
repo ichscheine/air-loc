@@ -11,14 +11,7 @@ import io
 import requests
 from datetime import datetime, timedelta
 import time
-from dotenv import load_dotenv
 from bs4 import BeautifulSoup
-
-# Load environment variables from .env file
-load_dotenv()
-
-# Get API key from environment variable
-WEATHER_API_KEY = os.getenv("WEATHER_API_KEY", "YOUR_API_KEY_HERE")
 
 # ------------------------------
 # UTILITY FUNCTIONS
@@ -80,10 +73,10 @@ def get_place_details_batch(places, location_context="Norway"):
 
 def get_location_coordinates(location_name):
     """
-    Get coordinates for a location using OpenWeatherMap Geocoding API
+    Get coordinates for a location using predefined coordinates
     """
     try:
-        # Predefined coordinates for problematic locations
+        # Predefined coordinates for locations
         location_coords = {
             "Nusfjord?": (68.0352, 13.3491),
             "Kjerag Hike": (59.0350, 6.5875),
@@ -97,47 +90,29 @@ def get_location_coordinates(location_name):
             "Bergen → Ålesund": (62.4722, 6.1524),  # Ålesund coordinates
             "Fly Ålesund → Stavanger": (58.9700, 5.7331),  # Stavanger coordinates
             "Haukland Beach – Uttakleiv Beach – Offersøykammen Hike": (68.1925, 13.5157),  # Haukland Beach
-            "Steffenakken – Reinebringen – Hamnøy – Ramberg": (67.9395, 13.1369)  # Hamnøy
+            "Steffenakken – Reinebringen – Hamnøy – Ramberg": (67.9395, 13.1369),  # Hamnøy
+            "IAD → FRA → EVE": (68.4891, 16.6780),  # Evenes Airport
+            "Evenes → Vågan, Lofoten": (68.2218, 13.3457),  # Lofoten
+            "Vågan, Lofoten": (68.2218, 13.3457),  # Lofoten
+            "Lofoten": (68.2218, 13.3457),  # Lofoten
+            "Bergen": (60.3943, 5.3259),  # Bergen
+            "Ålesund": (62.4722, 6.1524),  # Ålesund
+            "Stavanger": (58.9700, 5.7331),  # Stavanger
         }
         
         # Check if we have predefined coordinates for this location
         if location_name in location_coords:
             return location_coords[location_name]
             
-        # Clean up location name for API query
-        query = location_name.split('→')[0].strip() if '→' in location_name else location_name
-        query = query.split('–')[0].strip() if '–' in query else query
-        query = query.split('+')[0].strip() if '+' in query else query
-        
         # For special cases with airport codes
-        if "IAD" in query:
+        if "IAD" in location_name:
             return 38.9531, -77.4565  # Washington Dulles coordinates
-        if "FRA" in query:
+        if "FRA" in location_name:
             return 50.0379, 8.5622    # Frankfurt Airport coordinates
-        if "EVE" in query:
+        if "EVE" in location_name:
             return 68.4891, 16.6780   # Evenes Airport coordinates
         
-        # Add Norway to ensure we get the right locations
-        if "Norway" not in query and query not in ["Return Home"]:
-            query += ", Norway"
-            
-        geocoding_url = f"http://api.openweathermap.org/geo/1.0/direct?q={query}&limit=1&appid={WEATHER_API_KEY}"
-        response = requests.get(geocoding_url)
-        data = response.json()
-        
-        if data and len(data) > 0:
-            return data[0]['lat'], data[0]['lon']
-        
-        # If we couldn't get coordinates, try a simpler approach with just the first word
-        if ' ' in query:
-            simpler_query = query.split(' ')[0] + ", Norway"
-            geocoding_url = f"http://api.openweathermap.org/geo/1.0/direct?q={simpler_query}&limit=1&appid={WEATHER_API_KEY}"
-            response = requests.get(geocoding_url)
-            data = response.json()
-            
-            if data and len(data) > 0:
-                return data[0]['lat'], data[0]['lon']
-        
+        # If no match found, return None
         return None
     except Exception as e:
         print(f"Error getting coordinates for {location_name}: {e}")
@@ -145,18 +120,35 @@ def get_location_coordinates(location_name):
 
 def get_current_weather(lat, lon):
     """
-    Get current weather for coordinates
+    Get current weather for coordinates using Met Norway API
+    This is a simplified version that extracts current weather from the forecast
     """
     try:
-        weather_url = f"https://api.openweathermap.org/data/2.5/weather?lat={lat}&lon={lon}&units=metric&appid={WEATHER_API_KEY}"
-        response = requests.get(weather_url)
-        data = response.json()
+        # Get forecast from Met Norway API
+        forecast_data = get_forecast(lat, lon)
         
-        # Check for API error responses
-        if 'cod' in data and data['cod'] != 200:
-            print(f"Weather API error: {data.get('message', 'Unknown error')}")
+        if forecast_data and 'hourly' in forecast_data and forecast_data['hourly']:
+            # First hour is current weather
+            current = forecast_data['hourly'][0]
+            
+            # Format it like OpenWeatherMap data for compatibility with existing UI
+            weather_data = {
+                'weather': [current['weather'][0]],
+                'main': {
+                    'temp': current['temp'],
+                    'feels_like': current['temp'] - 2,  # Approximate feels like
+                    'humidity': current['humidity'],
+                    'pressure': 1013  # Default pressure
+                },
+                'wind': {
+                    'speed': current['wind_speed'],
+                    'deg': current['wind_deg']
+                }
+            }
+            
+            return weather_data
         
-        return data
+        return None
     except Exception as e:
         print(f"Error getting current weather: {e}")
         return None
@@ -1174,7 +1166,7 @@ for day in trip_data:
         if coordinates:
             lat, lon = coordinates
             weather = get_current_weather(lat, lon)
-            if weather and WEATHER_API_KEY != "YOUR_API_KEY_HERE":
+            if weather:
                 icon = get_weather_icon(weather['weather'][0]['icon'])
                 
                 # Create a 2-column layout for current weather and 3-day forecast
@@ -1288,13 +1280,11 @@ for day in trip_data:
                 # Hourly forecast has been removed to fix HTML rendering issues
                 
                 # 5-day forecast has been removed to fix HTML rendering issues
-            elif WEATHER_API_KEY == "YOUR_API_KEY_HERE":
-                st.info("⚠️ To enable weather information, please add your OpenWeatherMap API key to the .env file.")
+            else:
+                st.info("⚠️ Weather information is not available for this location.")
                 st.markdown("""
-                To get your API key:
-                1. Sign up at [OpenWeatherMap](https://openweathermap.org/api) (they have a free tier)
-                2. Get your API key
-                3. Create a `.env` file in the project root and add: `WEATHER_API_KEY=your_api_key_here`
+                The application uses the Met Norway API to fetch weather data. 
+                Weather information may not be available for all locations or may be temporarily unavailable.
                 """)
         
         # Display details with improved formatting and more compact design
