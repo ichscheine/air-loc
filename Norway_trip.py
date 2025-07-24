@@ -858,9 +858,9 @@ css_content += """
     background: linear-gradient(145deg, #ffffff 0%, #f8fafc 100%);
     border-radius: 12px;
     padding: 20px;
-    margin-bottom: 20px;
-    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05), 0 1px 3px rgba(0, 0, 0, 0.1);
-    border: 1px solid rgba(66, 133, 244, 0.1);
+    margin-bottom: 25px;
+    box-shadow: 0 6px 12px rgba(0, 0, 0, 0.08), 0 2px 4px rgba(0, 0, 0, 0.06);
+    border: 2px solid rgba(66, 133, 244, 0.15);
     transition: all 0.3s ease;
     position: relative;
     overflow: hidden;
@@ -872,16 +872,16 @@ css_content += """
     top: 0;
     left: 0;
     right: 0;
-    height: 3px;
+    height: 4px;
     background: linear-gradient(90deg, #4285F4, #34A853, #FBBC04, #EA4335);
-    opacity: 0;
+    opacity: 0.7;
     transition: opacity 0.3s ease;
 }
 
 .content-card:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1), 0 3px 6px rgba(0, 0, 0, 0.08);
-    border-color: rgba(66, 133, 244, 0.2);
+    transform: translateY(-3px);
+    box-shadow: 0 12px 30px rgba(0, 0, 0, 0.12), 0 4px 8px rgba(0, 0, 0, 0.08);
+    border-color: rgba(66, 133, 244, 0.3);
 }
 
 .content-card:hover::before {
@@ -890,13 +890,15 @@ css_content += """
 
 .content-card h4 {
     margin-top: 0;
-    margin-bottom: 15px;
+    margin-bottom: 20px;
     color: #1a202c;
-    font-weight: 600;
-    font-size: 1.2rem;
+    font-weight: 700;
+    font-size: 1.3rem;
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: 10px;
+    padding-bottom: 10px;
+    border-bottom: 2px solid rgba(66, 133, 244, 0.1);
 }
 
 /* Weather display styling */
@@ -1051,10 +1053,15 @@ a.interactive-link:hover {
 
 /* Enhanced Buttons */
 .stButton > button {
-    border-radius: 8px !important;
+    border-radius: 6px !important;
     font-weight: 500 !important;
     transition: all 0.3s ease !important;
     border: 1px solid transparent !important;
+    font-size: 0.8rem !important;
+    padding: 0.3rem 0.6rem !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
 }
 
 .stButton > button:hover {
@@ -1997,89 +2004,61 @@ for day in trip_data:
                 Weather information may not be available for all locations or may be temporarily unavailable.
                 """)
         
-        # Display details with improved formatting and more compact design
-        st.markdown(
-            f"""<div class="content-card">
-                <h4>📅 Itinerary Details</h4>
-                <div class="card-content">{day['details']}</div>
-            </div>""", 
-            unsafe_allow_html=True
-        )
-        
-        # Personal trip features
-        col1, col2, col3 = st.columns([1, 1, 1])
-        
-        with col1:
-            # Mark as visited checkbox
-            visited_key = f"visited_{day['date']}"
-            is_visited = st.checkbox(
-                "✅ Mark as Visited", 
-                value=st.session_state.visited_status.get(day["date"], False),
-                key=visited_key
-            )
-            st.session_state.visited_status[day["date"]] = is_visited
-        
-        with col2:
-            # Add to favorites button
-            is_favorite = day["location"] in st.session_state.favorite_places
-            if st.button(
-                f"{'💖 Remove from Favorites' if is_favorite else '🤍 Add to Favorites'}", 
-                key=f"fav_{day['date']}"
-            ):
-                if is_favorite:
-                    st.session_state.favorite_places.discard(day["location"])
-                    st.success(f"Removed {day['location']} from favorites!")
-                else:
-                    st.session_state.favorite_places.add(day["location"])
-                    st.success(f"Added {day['location']} to favorites!")
-                st.rerun()
-        
-        with col3:
-            # Weather preference indicator
-            user_weather_pref = st.session_state.preferences.get('weather_preference', 'any')
-            if user_weather_pref != 'any':
-                weather_match = "☀️ Great weather match!" if user_weather_pref in day.get('weather_keywords', []) else "🌤️ Check weather"
-                st.info(weather_match)
-        
-        # Personal notes section
-        st.markdown(
-            f"""<div class="content-card">
-                <h4>📝 Personal Notes & Memories</h4>
-                <div class="card-content">
-            """, 
-            unsafe_allow_html=True
-        )
-        
-        # Text area for personal notes
-        note_key = f"note_{day['date']}"
-        current_note = st.session_state.personal_notes.get(day["date"], "")
-        
-        personal_note = st.text_area(
-            "Add your thoughts, memories, or planning notes:",
-            value=current_note,
-            height=100,
-            key=note_key,
-            placeholder="Write about your experiences, things to remember, or planning notes..."
-        )
-        
-        if personal_note != current_note:
-            st.session_state.personal_notes[day["date"]] = personal_note
-        
-        # Quick note buttons
-        quick_notes = ["Amazing views!", "Great food", "Weather was perfect", "Challenging hike", "Very crowded", "Hidden gem"]
-        
-        st.markdown("**Quick notes:**")
-        cols = st.columns(6)  # Use 6 columns for a single row
-        for i, quick_note in enumerate(quick_notes):
-            with cols[i]:
-                if st.button(quick_note, key=f"quick_{day['date']}_{i}"):
-                    current = st.session_state.personal_notes.get(day["date"], "")
-                    if quick_note not in current:
-                        new_note = f"{current}\n• {quick_note}".strip()
-                        st.session_state.personal_notes[day["date"]] = new_note
-                        st.rerun()
-        
-        st.markdown("</div></div>", unsafe_allow_html=True)
+        # Unified Itinerary Details & Personal Notes section - Horizontal Layout
+        with st.container():
+            st.markdown("#### 📅 Itinerary Details & Personal Notes")
+            
+            # Create horizontal layout with two columns for space efficiency
+            itinerary_col, notes_col = st.columns([1, 1])
+            
+            # Left column: Today's Itinerary
+            with itinerary_col:
+                st.markdown("**📍 Today's Itinerary:**")
+                st.markdown(day['details'])
+            
+            # Right column: Personal Notes & Memories
+            with notes_col:
+                st.markdown("**📝 Personal Notes & Memories**")
+                
+                # Quick note buttons - compact in 3x2 grid to fit column width
+                quick_notes = ["Amazing views!", "Great food", "Perfect weather", "Challenging", "Crowded", "Hidden gem"]
+                
+                # Create 2 rows of 3 buttons each for better fit in column
+                row1_cols = st.columns(3)
+                for i in range(3):
+                    with row1_cols[i]:
+                        if st.button(quick_notes[i], key=f"quick_{day['date']}_{i}", use_container_width=True):
+                            current = st.session_state.personal_notes.get(day["date"], "")
+                            if quick_notes[i] not in current:
+                                new_note = f"{current}\n• {quick_notes[i]}".strip()
+                                st.session_state.personal_notes[day["date"]] = new_note
+                                st.rerun()
+                
+                row2_cols = st.columns(3)
+                for i in range(3, 6):
+                    with row2_cols[i-3]:
+                        if st.button(quick_notes[i], key=f"quick_{day['date']}_{i}", use_container_width=True):
+                            current = st.session_state.personal_notes.get(day["date"], "")
+                            if quick_notes[i] not in current:
+                                new_note = f"{current}\n• {quick_notes[i]}".strip()
+                                st.session_state.personal_notes[day["date"]] = new_note
+                                st.rerun()
+                
+                # Text area for additional personal notes
+                note_key = f"note_{day['date']}"
+                current_note = st.session_state.personal_notes.get(day["date"], "")
+                
+                personal_note = st.text_area(
+                    "Additional thoughts...",
+                    value=current_note,
+                    height=80,  # Compact height
+                    key=note_key,
+                    placeholder="Add detailed memories or planning notes...",
+                    label_visibility="collapsed"  # Hide the label to save space
+                )
+                
+                if personal_note != current_note:
+                    st.session_state.personal_notes[day["date"]] = personal_note
         
         # Add a prominent personalization summary if user has customized preferences
         user_activities = st.session_state.preferences.get('preferred_activities', [])
@@ -2363,18 +2342,20 @@ for day in trip_data:
                         match_style = "background: linear-gradient(135deg, #E8F5E8 0%, #F0F8FF 100%); border: 2px solid #4CAF50;" if is_match else ""
                         match_label = " ⭐ MATCHES YOUR INTERESTS" if is_match and activity not in base_activities else ""
                         
-                        # Create HTML with rating and link
+                        # Create HTML with rating and link - make entire box clickable
                         activity_html = f"""<li>
-                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; padding: 6px; border-radius: 6px; {match_style}" class="clickable-item activity-item">
-                                <div style="flex: 1; margin-right: 8px;">
-                                    <span class="activity-icon">{activity_icon}</span>{activity}{match_label}
+                            <a href="{maps_url}" target="_blank" style="text-decoration: none; color: inherit;">
+                                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; padding: 6px; border-radius: 6px; {match_style}" class="clickable-item activity-item">
+                                    <div style="flex: 1; margin-right: 8px;">
+                                        <span class="activity-icon">{activity_icon}</span>{activity}{match_label}
+                                    </div>
+                                    <div style="display: flex; align-items: center; flex-shrink: 0;">
+                                        <span style="color: #FFD700; margin-right: 3px; font-size: 0.8rem;">{rating_stars}</span>
+                                        <span style="color: #666; font-size: 0.8rem; margin-right: 8px;">{rating}/5</span>
+                                        <span style="display: inline-flex; align-items: center; justify-content: center; background-color: #4285F4; color: white; width: 24px; height: 24px; border-radius: 50%; text-decoration: none; box-shadow: 0 2px 5px rgba(0,0,0,0.2); transition: all 0.3s; font-size: 0.7rem;">🗺️</span>
+                                    </div>
                                 </div>
-                                <div style="display: flex; align-items: center; flex-shrink: 0;">
-                                    <span style="color: #FFD700; margin-right: 3px; font-size: 0.8rem;">{rating_stars}</span>
-                                    <span style="color: #666; font-size: 0.8rem; margin-right: 8px;">{rating}/5</span>
-                                    <a href="{maps_url}" target="_blank" style="display: inline-flex; align-items: center; justify-content: center; background-color: #4285F4; color: white; width: 24px; height: 24px; border-radius: 50%; text-decoration: none; box-shadow: 0 2px 5px rgba(0,0,0,0.2); transition: all 0.3s; font-size: 0.7rem;">🗺️</a>
-                                </div>
-                            </div>
+                            </a>
                         </li>"""
                         activities_with_details.append(activity_html)
                     
@@ -2688,18 +2669,20 @@ for day in trip_data:
                         
                         match_label_text = " " + " ".join(match_labels) if match_labels else ""
                         
-                        # Create HTML with rating and link
+                        # Create HTML with rating and link - make entire box clickable
                         dining_html = f"""<li>
-                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; padding: 6px; border-radius: 6px; {highlight_style}" class="clickable-item dining-item">
-                                <div style="flex: 1; margin-right: 8px;">
-                                    <span class="dining-icon">{dining_icon}</span>{dining}{match_label_text}
+                            <a href="{maps_url}" target="_blank" style="text-decoration: none; color: inherit;">
+                                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; padding: 6px; border-radius: 6px; {highlight_style}" class="clickable-item dining-item">
+                                    <div style="flex: 1; margin-right: 8px;">
+                                        <span class="dining-icon">{dining_icon}</span>{dining}{match_label_text}
+                                    </div>
+                                    <div style="display: flex; align-items: center; flex-shrink: 0;">
+                                        <span style="color: #FFD700; margin-right: 3px; font-size: 0.8rem;">{rating_stars}</span>
+                                        <span style="color: #666; font-size: 0.8rem; margin-right: 8px;">{rating}/5</span>
+                                        <span style="display: inline-flex; align-items: center; justify-content: center; background-color: #4285F4; color: white; width: 24px; height: 24px; border-radius: 50%; text-decoration: none; box-shadow: 0 2px 5px rgba(0,0,0,0.2); transition: all 0.3s; font-size: 0.7rem;">🗺️</span>
+                                    </div>
                                 </div>
-                                <div style="display: flex; align-items: center; flex-shrink: 0;">
-                                    <span style="color: #FFD700; margin-right: 3px; font-size: 0.8rem;">{rating_stars}</span>
-                                    <span style="color: #666; font-size: 0.8rem; margin-right: 8px;">{rating}/5</span>
-                                    <a href="{maps_url}" target="_blank" style="display: inline-flex; align-items: center; justify-content: center; background-color: #4285F4; color: white; width: 24px; height: 24px; border-radius: 50%; text-decoration: none; box-shadow: 0 2px 5px rgba(0,0,0,0.2); transition: all 0.3s; font-size: 0.7rem;">🗺️</a>
-                                </div>
-                            </div>
+                            </a>
                         </li>"""
                         dining_with_details.append(dining_html)
                     
@@ -2827,364 +2810,157 @@ for day in trip_data:
                         unsafe_allow_html=True
                     )
                 
-        # Create an enhanced interactive exploration section
-        st.markdown('<h3 class="section-header">🌍 Explore & Discover</h3>', unsafe_allow_html=True)
+        # Streamlined Explore & Discover section
+        st.markdown("""
+        <div class="content-card">
+            <h4>🔍 Explore & Discover</h4>
+        """, unsafe_allow_html=True)
         
         # Get user preferences for customization
         user_activities = st.session_state.preferences.get('preferred_activities', [])
         fitness_level = st.session_state.preferences.get('fitness_level', 'moderate')
         
-        # Create tabs for different exploration modes
-        img_tab, map_tab, plan_tab = st.tabs(["📸 Visual Preview", "🗺️ Interactive Locations", "📝 Planning Tools"])
-        
-        with img_tab:
+        # Compact unified layout - tight design
+        with st.container():
             if day["images"]:
-                # Enhanced image gallery with activity-based filtering
-                st.markdown("### Choose Your View:")
-                
-                # Add view filters based on user interests
-                view_options = ["All Photos"]
-                if "Photography" in user_activities:
-                    view_options.extend(["Best Photo Spots", "Golden Hour Views"])
-                if "Hiking" in user_activities:
-                    view_options.extend(["Trail Views", "Summit Panoramas"])
-                if "Scenic Drives" in user_activities:
-                    view_options.append("Road Trip Views")
-                if "Beaches" in user_activities and any(keyword in day["location"].lower() for keyword in ["beach", "coast", "lofoten"]):
-                    view_options.append("Coastal Scenes")
-                
-                selected_view = st.selectbox("Filter photos by:", view_options, key=f"view_{day['date']}")
-                
-                # Define captions and tags for better filtering
+                # Smart image selection based on user preferences
                 enhanced_captions = {
-                    "2025-08-02 (Saturday)": [
-                        {"caption": "Sunset view from airplane approaching Norway", "tags": ["scenic", "golden_hour"], "activity": "Scenic Drives"}
-                    ],
-                    "2025-08-03 (Sunday)": [
-                        {"caption": "Scenic coastal road in Lofoten Islands", "tags": ["road", "scenic"], "activity": "Scenic Drives"},
-                        {"caption": "Mountain views along E10 to Lofoten", "tags": ["mountain", "road"], "activity": "Scenic Drives"}
-                    ],
-                    "2025-08-04 (Monday)": [
-                        {"caption": "Haukland Beach with turquoise waters in summer", "tags": ["beach", "coast", "golden_hour"], "activity": "Beaches"},
-                        {"caption": "Uttakleiv Beach and its iconic boulders", "tags": ["beach", "coast", "photo_spot"], "activity": "Photography"},
-                        {"caption": "Panoramic view from Offersøykammen hike", "tags": ["hiking", "summit", "panorama"], "activity": "Hiking"}
-                    ],
-                    "2025-08-05 (Tuesday)": [
-                        {"caption": "Viewpoint over Lofoten's dramatic mountains", "tags": ["hiking", "summit", "panorama"], "activity": "Hiking"},
-                        {"caption": "Red rorbuer fishing cabins in Hamnøy", "tags": ["photo_spot", "village"], "activity": "Photography"},
-                        {"caption": "Scenic Ramberg Beach with mountain backdrop", "tags": ["beach", "coast", "photo_spot"], "activity": "Beaches"}
-                    ],
-                    "2025-08-06 (Wednesday)": [
-                        {"caption": "Traditional fishing village of Nusfjord in summer", "tags": ["village", "photo_spot"], "activity": "Photography"},
-                        {"caption": "Sea eagle safari views in Lofoten", "tags": ["wildlife", "scenic"], "activity": "Wildlife Viewing"}
-                    ],
-                    "2025-08-07 (Thursday)": [
-                        {"caption": "Henningsvær harbor village with mountains", "tags": ["village", "photo_spot"], "activity": "Photography"},
-                        {"caption": "View from Fløya hiking trail in summer", "tags": ["hiking", "summit", "panorama"], "activity": "Hiking"}
-                    ],
-                    "2025-08-08 (Friday)": [
-                        {"caption": "Bergen's colorful Bryggen Wharf in summer", "tags": ["photo_spot", "historic"], "activity": "Photography"},
-                        {"caption": "Bergen harbor with boats in summer sunshine", "tags": ["scenic", "golden_hour"], "activity": "Scenic Drives"}
-                    ],
-                    "2025-08-09 (Saturday)": [
-                        {"caption": "Bryggen Wharf historic buildings in summer", "tags": ["historic", "photo_spot"], "activity": "Photography"},
-                        {"caption": "View from Mount Fløyen over Bergen", "tags": ["hiking", "summit", "panorama"], "activity": "Hiking"},
-                        {"caption": "Bergen fish market in summer", "tags": ["food", "market"], "activity": "Food Tours"}
-                    ],
-                    "2025-08-10 (Sunday)": [
-                        {"caption": "Summer view of Geirangerfjord UNESCO site", "tags": ["scenic", "photo_spot"], "activity": "Photography"},
-                        {"caption": "Flydalsjuvet viewpoint over Geirangerfjord", "tags": ["hiking", "summit", "panorama"], "activity": "Hiking"}
-                    ],
-                    "2025-08-11 (Monday)": [
-                        {"caption": "Seven Sisters waterfall in Geirangerfjord", "tags": ["scenic", "photo_spot"], "activity": "Photography"},
-                        {"caption": "Cruise boat in summer on Geirangerfjord", "tags": ["scenic", "boat"], "activity": "Scenic Drives"}
-                    ],
-                    "2025-08-12 (Tuesday)": [
-                        {"caption": "Canyoning adventure in Geirangerfjord", "tags": ["adventure", "extreme"], "activity": "Adventure Sports"},
-                        {"caption": "Ålesund city view with art nouveau architecture", "tags": ["photo_spot", "historic"], "activity": "Photography"}
-                    ],
-                    "2025-08-13 (Wednesday)": [
-                        {"caption": "Colorful wooden houses in Stavanger Old Town", "tags": ["photo_spot", "historic"], "activity": "Photography"},
-                        {"caption": "Stavanger harbor in summer sunshine", "tags": ["scenic", "golden_hour"], "activity": "Scenic Drives"}
-                    ],
-                    "2025-08-14 (Thursday)": [
-                        {"caption": "Kjeragbolten boulder wedged between cliffs", "tags": ["hiking", "extreme", "photo_spot"], "activity": "Adventure Sports"},
-                        {"caption": "Summer hiking trail to Kjerag", "tags": ["hiking", "trail"], "activity": "Hiking"}
-                    ],
-                    "2025-08-15 (Friday)": [
-                        {"caption": "Pulpit Rock (Preikestolen) in summer", "tags": ["hiking", "summit", "photo_spot"], "activity": "Hiking"},
-                        {"caption": "View of Lysefjord from Pulpit Rock in August", "tags": ["hiking", "summit", "panorama"], "activity": "Hiking"}
-                    ],
-                    "2025-08-16 (Saturday)": [
-                        {"caption": "Final view of Norwegian fjords and mountains", "tags": ["scenic", "panorama"], "activity": "Scenic Drives"}
-                    ]
+                    "2025-08-02 (Saturday)": [{"caption": "Approaching Norway", "activity": "Scenic Drives"}],
+                    "2025-08-04 (Monday)": [{"caption": "Haukland Beach", "activity": "Beaches"}, {"caption": "Uttakleiv Beach", "activity": "Photography"}],
+                    "2025-08-05 (Tuesday)": [{"caption": "Lofoten Mountains", "activity": "Hiking"}, {"caption": "Hamnøy Village", "activity": "Photography"}],
+                    "2025-08-07 (Thursday)": [{"caption": "Henningsvær", "activity": "Photography"}, {"caption": "Fløya Hike", "activity": "Hiking"}],
+                    "2025-08-14 (Thursday)": [{"caption": "Kjeragbolten", "activity": "Adventure Sports"}, {"caption": "Kjerag Trail", "activity": "Hiking"}],
+                    "2025-08-15 (Friday)": [{"caption": "Pulpit Rock", "activity": "Hiking"}, {"caption": "Lysefjord View", "activity": "Photography"}]
                 }
                 
-                # Filter images based on selected view and user preferences
-                day_image_data = enhanced_captions.get(day["date"], [])
-                filtered_images = []
+                # Select best image based on user preferences
+                day_images = enhanced_captions.get(day["date"], [{"caption": "Norway Scene", "activity": ""}])
+                best_image_idx = 0
                 
-                for i, img_data in enumerate(day_image_data):
-                    if i >= len(day["images"]):
+                # Prioritize based on user activities
+                for i, img_data in enumerate(day_images):
+                    if img_data.get("activity") in user_activities:
+                        best_image_idx = i
                         break
-                        
-                    include_image = False
-                    
-                    if selected_view == "All Photos":
-                        include_image = True
-                    elif selected_view == "Best Photo Spots" and "photo_spot" in img_data.get("tags", []):
-                        include_image = True
-                    elif selected_view == "Golden Hour Views" and "golden_hour" in img_data.get("tags", []):
-                        include_image = True
-                    elif selected_view == "Trail Views" and "hiking" in img_data.get("tags", []):
-                        include_image = True
-                    elif selected_view == "Summit Panoramas" and "summit" in img_data.get("tags", []):
-                        include_image = True
-                    elif selected_view == "Road Trip Views" and "road" in img_data.get("tags", []):
-                        include_image = True
-                    elif selected_view == "Coastal Scenes" and any(tag in img_data.get("tags", []) for tag in ["beach", "coast"]):
-                        include_image = True
-                    
-                    if include_image:
-                        filtered_images.append((day["images"][i], img_data))
                 
-                # If no filtered images, show all
-                if not filtered_images:
-                    filtered_images = [(day["images"][i], day_image_data[i] if i < len(day_image_data) else {"caption": f"Norway Scene {i+1}", "tags": [], "activity": ""}) for i in range(len(day["images"]))]
+                # Tight two-column layout: Image + All Info
+                img_col, info_col = st.columns([3, 2])
                 
-                # Display filtered images with enhanced layout
-                if len(filtered_images) == 1:
-                    # Single image - large display with detailed info
-                    img_path, img_data = filtered_images[0]
-                    
-                    col1, col2 = st.columns([2, 1])
-                    with col1:
+                with img_col:
+                    if best_image_idx < len(day["images"]):
+                        img_path = day["images"][best_image_idx]
                         high_res_path = img_path.replace("Norway_gallery/", "Norway_gallery/original_backup/")
                         actual_path = high_res_path if os.path.exists(high_res_path) else img_path
                         high_quality_img = load_high_quality_image(actual_path)
                         
-                        st.markdown('<div class="image-container large-image high-quality-image">', unsafe_allow_html=True)
-                        st.image(high_quality_img, caption=img_data["caption"], width=600, output_format="PNG")
-                        st.markdown('</div>', unsafe_allow_html=True)
-                    
-                    with col2:
-                        st.markdown("### 📋 Photo Details")
-                        st.write(f"**Best for:** {img_data.get('activity', 'General viewing')}")
+                        st.image(high_quality_img, 
+                                caption=day_images[best_image_idx]["caption"] if best_image_idx < len(day_images) else "Norway Scene",
+                                use_container_width=True)
                         
-                        if img_data.get('tags'):
-                            st.write(f"**Tags:** {', '.join(img_data['tags'])}")
-                        
-                        # Add personalized photo tips
-                        if "Photography" in user_activities:
-                            if "golden_hour" in img_data.get("tags", []):
-                                st.success("📸 Perfect for golden hour photography!")
-                            if "photo_spot" in img_data.get("tags", []):
-                                st.info("📷 This is a popular photography location")
-                        
-                        if "Hiking" in user_activities and "hiking" in img_data.get("tags", []):
-                            if fitness_level in ["active", "very_active"]:
-                                st.success("🥾 Great hiking destination for your fitness level!")
-                            elif fitness_level == "light":
-                                st.warning("⚠️ This may require moderate hiking")
-                        
-                        # Add practical info
-                        st.markdown("### 💡 Planning Tips")
-                        if "beach" in img_data.get("tags", []):
-                            st.write("• Best visited during midday for warmest weather")
-                            st.write("• Bring layers - coastal weather changes quickly")
-                        elif "summit" in img_data.get("tags", []):
-                            st.write("• Start early to avoid crowds")
-                            st.write("• Check weather conditions before hiking")
-                        elif "village" in img_data.get("tags", []):
-                            st.write("• Great for morning or evening exploration")
-                            st.write("• Many shops and cafes available")
+                        # Compact image gallery navigation
+                        if len(day["images"]) > 1:
+                            selected_img = st.selectbox("", 
+                                                      range(len(day["images"])), 
+                                                      format_func=lambda x: f"View {x+1}",
+                                                      key=f"img_nav_{day['date']}")
                 
-                else:
-                    # Multiple images - responsive grid
-                    num_images = len(filtered_images)
-                    if num_images > 3:
-                        cols = st.columns([1, 1, 1])
-                    elif num_images > 1:
-                        cols = st.columns([1, 1])
-                    else:
-                        cols = st.columns([1])
+                with info_col:
+                    # Integrated section: Key Highlights, Locations, and Planning
+                    st.markdown("**📍 Key Highlights:**")
                     
-                    for i, (img_path, img_data) in enumerate(filtered_images):
-                        col_idx = i % len(cols)
-                        
-                        high_res_path = img_path.replace("Norway_gallery/", "Norway_gallery/original_backup/")
-                        actual_path = high_res_path if os.path.exists(high_res_path) else img_path
-                        high_quality_img = load_high_quality_image(actual_path)
-                        
-                        with cols[col_idx]:
-                            st.markdown('<div class="image-container high-quality-image">', unsafe_allow_html=True)
-                            st.image(high_quality_img, caption=img_data["caption"], width=300, output_format="PNG")
-                            
-                            # Add quick activity match indicators
-                            if img_data.get("activity") in user_activities:
-                                st.markdown("⭐ *Matches your interests!*")
-                            
-                            st.markdown('</div>', unsafe_allow_html=True)
-                
-                # Add personalized viewing suggestions
-                if user_activities:
-                    matching_activities = set()
-                    for img_data in day_image_data:
-                        if img_data.get("activity") in user_activities:
-                            matching_activities.add(img_data.get("activity"))
+                    # Location-specific smart recommendations
+                    location_lower = day["location"].lower()
+                    highlights = []
                     
-                    if matching_activities:
-                        st.success(f"📸 This location has great photo opportunities for: {', '.join(matching_activities)}")
-            
-            else:
-                st.info("📸 No photos available for this day yet. Check back later or explore the locations!")
-        
-        with map_tab:
-            # Enhanced interactive location explorer
-            st.markdown("### 🎯 Interactive Location Guide")
-            
-            if day["date"] in norway_locations:
-                # Create enhanced location cards with detailed information
-                for i, link in enumerate(norway_locations[day["date"]]):
-                    # Extract and clean location name
-                    match = re.search(r'place/([^/@]+)', link)
-                    if match:
-                        raw_name = match.group(1).replace('+', ' ').replace('_', ' ')
-                        raw_name = re.sub(r'@[\d\.]+,[\d\.]+', '', raw_name)
-                        name = ' '.join(word.capitalize() for word in raw_name.split())
-                    else:
-                        name = f"Location {i+1}"
+                    if "lofoten" in location_lower:
+                        if "Photography" in user_activities: highlights.append("📸 Iconic red cabins")
+                        if "Hiking" in user_activities: highlights.append("🥾 Dramatic peaks")
+                        if "Beaches" in user_activities: highlights.append("🏖️ Arctic beaches")
+                    elif "bergen" in location_lower:
+                        if "Photography" in user_activities: highlights.append("📸 Colorful Bryggen")
+                        if "Food Tours" in user_activities: highlights.append("🍽️ Fish market")
+                        if "Museums" in user_activities: highlights.append("🏛️ Cultural sites")
+                    elif "geiranger" in location_lower:
+                        if "Photography" in user_activities: highlights.append("📸 UNESCO fjord")
+                        if "Adventure Sports" in user_activities: highlights.append("🚁 Scenic flights")
+                        highlights.append("💧 Seven Sisters Falls")
+                    elif "stavanger" in location_lower:
+                        if "Hiking" in user_activities: highlights.append("🥾 Pulpit Rock")
+                        if "Photography" in user_activities: highlights.append("📸 Old Town")
+                        if "Adventure Sports" in user_activities: highlights.append("⛰️ Kjeragbolten")
                     
-                    # Create enhanced location card
-                    with st.container():
-                        col1, col2, col3 = st.columns([1, 3, 1])
-                        
-                        with col1:
-                            st.markdown(f"""
-                                <div style="background: linear-gradient(135deg, #4285F4, #34A853); 
-                                           color: white; width: 50px; height: 50px; border-radius: 50%; 
-                                           display: flex; align-items: center; justify-content: center; 
-                                           font-weight: bold; font-size: 1.2rem; margin: auto;">
-                                    {i+1}
-                                </div>
-                            """, unsafe_allow_html=True)
-                        
-                        with col2:
-                            st.markdown(f"### 📍 {name}")
-                            
-                            # Add location-specific information based on user preferences
-                            location_info = []
-                            name_lower = name.lower()
-                            
-                            # Add activity-specific information
-                            if "Hiking" in user_activities:
-                                if any(keyword in name_lower for keyword in ["mountain", "rock", "cliff", "trail"]):
-                                    if fitness_level in ["active", "very_active"]:
-                                        location_info.append("🥾 Excellent hiking - matches your fitness level!")
-                                    elif fitness_level == "moderate":
-                                        location_info.append("🚶‍♂️ Moderate hiking available - take your time")
-                                    else:
-                                        location_info.append("⚠️ Challenging terrain - consider viewpoints instead")
-                            
-                            if "Photography" in user_activities:
-                                if any(keyword in name_lower for keyword in ["fjord", "view", "falls", "bridge"]):
-                                    location_info.append("📸 Outstanding photography opportunities!")
-                                if "sunset" in name_lower or "sunrise" in name_lower:
-                                    location_info.append("🌅 Perfect for golden hour photography")
-                            
-                            if "Food Tours" in user_activities:
-                                if "market" in name_lower:
-                                    location_info.append("🍽️ Great food exploration opportunities!")
-                                elif "town" in name_lower or "city" in name_lower:
-                                    location_info.append("🍴 Local dining scene worth exploring")
-                            
-                            if "Wildlife Viewing" in user_activities:
-                                if any(keyword in name_lower for keyword in ["safari", "nature", "coast"]):
-                                    location_info.append("🦅 Wildlife spotting opportunities!")
-                            
-                            # Add practical information
-                            if "airport" in name_lower:
-                                location_info.append("✈️ Transportation hub")
-                            elif "beach" in name_lower:
-                                location_info.append("🏖️ Coastal location - check weather")
-                            elif "museum" in name_lower:
-                                location_info.append("🏛️ Cultural attraction")
-                            
-                            # Display personalized information
-                            if location_info:
-                                for info in location_info:
-                                    st.write(f"• {info}")
+                    # Add general highlights if no specific ones
+                    if not highlights:
+                        highlights = ["🌍 Scenic Norwegian beauty", "📷 Photo opportunities", "🚶‍♂️ Exploration ready"]
+                    
+                    for highlight in highlights:
+                        st.write(f"• {highlight}")
+                    
+                    # Fitness level warning if applicable
+                    if any(keyword in location_lower for keyword in ["rock", "mountain", "kjerag"]):
+                        if fitness_level in ["light", "moderate"]:
+                            st.warning("⚠️ Challenging hikes - plan accordingly")
+                        else:
+                            st.success("💪 Perfect for your fitness level!")
+                    
+                    # Integrated Interactive Locations (compact)
+                    st.markdown("**🗺️ Locations:**")
+                    if day["date"] in norway_locations:
+                        for i, link in enumerate(norway_locations[day["date"]]):
+                            match = re.search(r'place/([^/@]+)', link)
+                            if match:
+                                raw_name = match.group(1).replace('+', ' ').replace('_', ' ')
+                                name = ' '.join(word.capitalize() for word in raw_name.split())
                             else:
-                                st.write("📍 Scenic Norwegian destination")
+                                name = f"Location {i+1}"
                             
-                            # Add estimated time and difficulty
-                            if any(keyword in name_lower for keyword in ["rock", "mountain", "cliff"]):
-                                if fitness_level == "very_active":
-                                    st.write("⏱️ **Estimated time:** 4-6 hours")
-                                    st.write("💪 **Difficulty:** Perfect for you!")
-                                elif fitness_level == "active":
-                                    st.write("⏱️ **Estimated time:** 5-7 hours")
-                                    st.write("💪 **Difficulty:** Challenging but doable")
-                                else:
-                                    st.write("⏱️ **Estimated time:** Consider alternatives")
-                                    st.write("💪 **Difficulty:** Very challenging")
-                            elif "museum" in name_lower or "market" in name_lower:
-                                st.write("⏱️ **Estimated time:** 1-3 hours")
-                                st.write("💪 **Difficulty:** Easy walking")
-                        
-                        with col3:
-                            st.markdown(f"""
-                                <a href='{link}' target='_blank' style="text-decoration: none;">
-                                    <div style="background: #4285F4; color: white; padding: 10px 15px; 
-                                               border-radius: 25px; text-align: center; transition: all 0.3s;
-                                               box-shadow: 0 2px 10px rgba(66, 133, 244, 0.3);">
-                                        🗺️ Open Map
-                                    </div>
-                                </a>
-                            """, unsafe_allow_html=True)
-                        
-                        st.markdown("---")
-            
-            else:
-                st.info("🗺️ No specific locations mapped for this day. Enjoy the journey!")
-        
-        with plan_tab:
-            # Simplified planning tools
-            st.markdown("### 📝 Quick Planning")
-            
-            # Personal notes (simplified)
-            st.markdown("#### 💭 Notes")
-            current_note = st.session_state.personal_notes.get(day["date"], "")
-            updated_note = st.text_area(
-                "Add your thoughts or reminders:",
-                value=current_note,
-                height=80,
-                key=f"notes_{day['date']}_simple",
-                placeholder="Plans, reminders, must-dos..."
-            )
-            if updated_note != current_note:
-                st.session_state.personal_notes[day["date"]] = updated_note
-            
-            # Favorites and completion (simplified)
-            col1, col2 = st.columns(2)
-            
-            with col1:
-                st.markdown("#### ⭐ Favorite")
-                is_favorite = day["location"] in st.session_state.favorite_places
-                if st.button("💖" if not is_favorite else "💔", 
-                           key=f"plan_fav_{day['date']}", use_container_width=True):
-                    if is_favorite:
-                        st.session_state.favorite_places.discard(day["location"])
+                            # Very compact single line per location
+                            st.write(f"📍 **{name}** [🗺️]({link})")
                     else:
-                        st.session_state.favorite_places.add(day["location"])
-                    st.rerun()
-            
-            with col2:
-                st.markdown("#### ✅ Completed")
-                is_visited = st.session_state.visited_status.get(day["date"], False)
-                if st.button("✅" if not is_visited else "⏳", 
-                           key=f"plan_visited_{day['date']}", use_container_width=True):
-                    st.session_state.visited_status[day["date"]] = not is_visited
-                    st.rerun()
+                        st.caption("🗺️ General exploration day")
+                    
+                    # Integrated Quick Planning (compact)
+                    st.markdown("**� Quick Actions:**")
+                    
+                    # Compact action buttons in single row
+                    action_cols = st.columns(2)
+                    
+                    with action_cols[0]:
+                        # Favorite toggle (compact)
+                        is_favorite = day["location"] in st.session_state.favorite_places
+                        if st.button("💖" if not is_favorite else "💔", 
+                                   key=f"fav_{day['date']}_compact", 
+                                   help="Toggle favorite",
+                                   use_container_width=True):
+                            if is_favorite:
+                                st.session_state.favorite_places.discard(day["location"])
+                            else:
+                                st.session_state.favorite_places.add(day["location"])
+                            st.rerun()
+                    
+                    with action_cols[1]:
+                        # Visited toggle (compact)
+                        is_visited = st.session_state.visited_status.get(day["date"], False)
+                        if st.button("✅" if not is_visited else "⏳", 
+                                   key=f"visited_{day['date']}_compact",
+                                   help="Mark as completed",
+                                   use_container_width=True):
+                            st.session_state.visited_status[day["date"]] = not is_visited
+                            st.rerun()
+                    
+                    # Compact notes
+                    current_note = st.session_state.personal_notes.get(day["date"], "")
+                    updated_note = st.text_area(
+                        "Quick notes:",
+                        value=current_note,
+                        height=68,
+                        key=f"notes_{day['date']}_integrated",
+                        placeholder="Quick thoughts...",
+                        label_visibility="collapsed"
+                    )
+                    if updated_note != current_note:
+                        st.session_state.personal_notes[day["date"]] = updated_note
+        
+        st.markdown("</div>", unsafe_allow_html=True)
         
         break
