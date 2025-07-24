@@ -1358,6 +1358,29 @@ html {
 
 st.markdown(f'<style>{css_content}</style>', unsafe_allow_html=True)
 
+# Add custom CSS to hide "Press Enter to apply" text
+st.markdown("""
+<style>
+/* Hide the "Press Enter to apply" instruction text */
+.stTextInput > div[data-baseweb="base-input"] > div[data-testid="stMarkdownContainer"] p {
+    display: none !important;
+}
+
+/* Alternative selectors to target the instruction text */
+div[data-testid="stTextInput"] .stTextInput-instructions,
+div[data-testid="stTextInput"] small,
+div[data-testid="stTextInput"] p:contains("Press"),
+.stTextInput small {
+    display: none !important;
+}
+
+/* Hide any element containing "Press ↵ to apply" text */
+*:contains("Press ↵ to apply") {
+    display: none !important;
+}
+</style>
+""", unsafe_allow_html=True)
+
 # Define the checklist data
 checklist = {
     "Critical Essentials": [
@@ -1462,7 +1485,7 @@ if 'visited_status' not in st.session_state:
 # Initialize session state for personal preferences
 if 'preferences' not in st.session_state:
     st.session_state.preferences = {
-        'preferred_activities': [],
+        'preferred_activities': ['Hiking'],
         'dietary_restrictions': [],
         'budget_level': 'medium',
         'fitness_level': 'moderate',
@@ -2919,47 +2942,90 @@ for day in trip_data:
                     else:
                         st.caption("🗺️ General exploration day")
                     
-                    # Integrated Quick Planning (compact)
-                    st.markdown("**� Quick Actions:**")
+                    # Search Nearby feature
+                    st.markdown("**🔍 Search Nearby:**")
                     
-                    # Compact action buttons in single row
-                    action_cols = st.columns(2)
+                    # Initialize session state for search query if not exists
+                    search_key = f"search_query_{day['date']}"
+                    if search_key not in st.session_state:
+                        st.session_state[search_key] = ""
                     
-                    with action_cols[0]:
-                        # Favorite toggle (compact)
-                        is_favorite = day["location"] in st.session_state.favorite_places
-                        if st.button("💖" if not is_favorite else "💔", 
-                                   key=f"fav_{day['date']}_compact", 
-                                   help="Toggle favorite",
-                                   use_container_width=True):
-                            if is_favorite:
-                                st.session_state.favorite_places.discard(day["location"])
+                    # Search input and button
+                    search_cols = st.columns([3, 1])
+                    
+                    with search_cols[0]:
+                        # Use selectbox with common options instead of text input
+                        search_options = [
+                            "Select what to search for...",
+                            "gas station",
+                            "restaurant", 
+                            "pharmacy",
+                            "grocery store",
+                            "ATM",
+                            "hospital",
+                            "tourist information",
+                            "parking",
+                            "cafe",
+                            "Custom (type below)"
+                        ]
+                        
+                        selected_option = st.selectbox(
+                            "",
+                            options=search_options,
+                            key=f"search_select_{day['date']}",
+                            label_visibility="collapsed"
+                        )
+                        
+                        # If "Custom" is selected, show a text input without the confusing text
+                        if selected_option == "Custom (type below)":
+                            custom_search = st.text_input(
+                                "",
+                                placeholder="Enter custom search term...",
+                                key=f"custom_search_{day['date']}",
+                                label_visibility="collapsed"
+                            )
+                            search_query = custom_search if custom_search.strip() else ""
+                        elif selected_option != "Select what to search for...":
+                            search_query = selected_option
+                        else:
+                            search_query = ""
+                        
+                        # Update session state
+                        st.session_state[search_key] = search_query
+                    
+                    with search_cols[1]:
+                        # Only show search button if there's a query
+                        if search_query.strip():
+                            # Get current location for search context
+                            if day["date"] in norway_locations and len(norway_locations[day["date"]]) > 0:
+                                # Use first location as reference point
+                                base_location = norway_locations[day["date"]][0]
+                                # Extract location from Google Maps URL for search context
+                                import re
+                                match = re.search(r'place/([^/@]+)', base_location)
+                                if match:
+                                    location_context = match.group(1).replace('+', ' ').replace('_', ' ')
+                                else:
+                                    location_context = day["location"]
                             else:
-                                st.session_state.favorite_places.add(day["location"])
-                            st.rerun()
-                    
-                    with action_cols[1]:
-                        # Visited toggle (compact)
-                        is_visited = st.session_state.visited_status.get(day["date"], False)
-                        if st.button("✅" if not is_visited else "⏳", 
-                                   key=f"visited_{day['date']}_compact",
-                                   help="Mark as completed",
-                                   use_container_width=True):
-                            st.session_state.visited_status[day["date"]] = not is_visited
-                            st.rerun()
-                    
-                    # Compact notes
-                    current_note = st.session_state.personal_notes.get(day["date"], "")
-                    updated_note = st.text_area(
-                        "Quick notes:",
-                        value=current_note,
-                        height=68,
-                        key=f"notes_{day['date']}_integrated",
-                        placeholder="Quick thoughts...",
-                        label_visibility="collapsed"
-                    )
-                    if updated_note != current_note:
-                        st.session_state.personal_notes[day["date"]] = updated_note
+                                location_context = day["location"]
+                            
+                            # Create Google Maps search URL
+                            search_url = f"https://www.google.com/maps/search/{search_query.replace(' ', '+')}+near+{location_context.replace(' ', '+')}"
+                            
+                            # Use link_button to directly open Google Maps
+                            if st.link_button("🔍", 
+                                           search_url,
+                                           help=f"Search for '{search_query}' near {location_context}",
+                                           use_container_width=True):
+                                pass  # link_button handles the opening automatically
+                        else:
+                            # Show disabled button when no query
+                            st.button("🔍", 
+                                   key=f"search_btn_{day['date']}_disabled", 
+                                   help="Enter search term first",
+                                   disabled=True,
+                                   use_container_width=True)
         
         st.markdown("</div>", unsafe_allow_html=True)
         
