@@ -1020,28 +1020,83 @@ st.markdown(f'<style>{css_content}</style>', unsafe_allow_html=True)
 
 # Define the checklist data
 checklist = {
-    "Essentials": [
+    "Critical Essentials": [
         "passport",
+        "flight tickets and confirmations",
+        "travel insurance documents",
+        "prescription medications",
+        "credit cards and some cash (NOK/EUR)",
+        "phone, charger, and adapter (EU), powerbank",
         "U.S. driver license",
-        "phone, charger, and adapter(EU), powerbank"
+        "hotel/accommodation confirmations",
+        "car rental confirmation"
     ],
-    "Entertainment": [
+    "Weather & Safety (Norway Essential)": [
+        "waterproof jacket/rain coat",
+        "sturdy hiking boots (broken in)",
+        "warm layers (August can be cool, 10-20°C)",
+        "sunglasses (essential for glacial areas)",
+        "sunscreen (SPF 30+, UV is strong)",
+        "first aid kit basics",
+        "waterproof gear (frequent rain)",
+        "thermal underwear (for cool evenings)",
+        "warm hat/beanie"
+    ],
+    "Core Clothing": [
+        "layered clothing (temperatures vary)",
+        "comfortable walking pants",
+        "quick-dry hiking pants",
+        "warm sweater or fleece",
+        "hiking socks (wool or synthetic)",
+        "underwear and socks (extra pairs)",
+        "comfortable casual clothes",
+        "sleepwear"
+    ],
+    "Hiking & Outdoor Gear": [
+        "day backpack (20-30L)",
+        "good grip shoes (wet rocks)",
+        "waterproof pants (for boat tours)",
+        "hiking gloves",
+        "quick-dry base layers",
+        "trekking poles (optional)",
+        "dry bags (keep electronics dry)"
+    ],
+    "Health & Personal Care": [
+        "motion sickness relief",
+        "insect/mosquito repellent",
+        "pain relievers",
+        "personal hygiene items",
+        "lip balm with SPF",
+        "contact lenses/glasses (backup)",
+        "hand sanitizer"
+    ],
+    "Essential Tech": [
+        "camera and extra batteries/memory cards",
+        "waterproof phone case",
+        "portable charger/power bank",
+        "travel adapter (Type C/F for Norway)",
+        "downloaded maps (offline access)",
+        "headphones"
+    ],
+    "Comfort & Convenience": [
+        "comfortable walking shoes (non-hiking)",
+        "water bottle (reusable)",
+        "umbrella or poncho",
+        "warm scarf or buff",
+        "eye mask and earplugs",
+        "slippers for accommodation",
+        "travel pillow",
+        "snacks for hiking",
+        "small daypack for excursions"
+    ],
+    "Norway Specific Extras": [
+        "cash (some places don't take cards)",
+        "binoculars (for wildlife viewing)",
+        "swim clothes (for hot springs/beaches)"
+    ],
+    "Entertainment & Optional": [
         "selfie stick",
-        "Kindle/books",
-        "pocket-size game"
-    ],
-    "Protection/self-care": [
-        "sunglasses",
-        "sunscreen",
-        "insect / mosquito repellent",
-        "Slippers",
-        "Personal items: water bottle; eye mask",
-        "motion sickness relief (for boat tour and car sickness?)"
-    ],
-    "Hiking Gears": [
-        "down jacket",
-        "hiking shoes",
-        "umbrella/or water resisitant rain coat"
+        "Kindle/books"
     ]
 }
 
