@@ -1518,7 +1518,7 @@ with st.sidebar.expander("View Checklist", expanded=False):
 # Add personal preferences panel
 st.sidebar.markdown('<div class="sidebar-header">⚙️ Personal Preferences</div>', unsafe_allow_html=True)
 
-with st.sidebar.expander("Customize Your Trip", expanded=True):
+with st.sidebar.expander("Customize Your Trip", expanded=False):
     st.markdown("**👇 Select your preferences to get personalized recommendations!**")
     
     st.markdown("**Activity Preferences:**")
