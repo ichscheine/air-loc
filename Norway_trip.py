@@ -791,6 +791,59 @@ with open('style.css') as f:
 
 # Add additional CSS for high-quality images and weather display
 css_content += """
+/* Enhanced Typography and Visual Hierarchy */
+.main-header h1 {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    font-size: 2.5rem;
+    font-weight: 700;
+    margin-bottom: 0.5rem;
+    text-align: center;
+}
+
+.sidebar-header {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 12px 16px;
+    margin: -1rem -1rem 1rem -1rem;
+    font-weight: 600;
+    font-size: 1.1rem;
+    border-radius: 8px 8px 0 0;
+    text-align: center;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.location-header {
+    background: linear-gradient(135deg, #4285F4 0%, #34A853 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    text-align: center;
+    margin-bottom: 0.5rem;
+    font-weight: 600;
+}
+
+.date-subheader {
+    text-align: center;
+    color: #666;
+    font-weight: 400;
+    margin-top: 0;
+    margin-bottom: 1rem;
+    font-size: 1.1rem;
+}
+
+.section-header {
+    background: linear-gradient(135deg, #FF6B6B 0%, #4ECDC4 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    text-align: center;
+    margin: 2rem 0 1rem 0;
+    font-weight: 600;
+}
+
 /* High-quality image rendering enhancements */
 .high-quality-image img {
     image-rendering: -webkit-optimize-contrast;
@@ -800,9 +853,66 @@ css_content += """
     transform: translateZ(0);
 }
 
+/* Enhanced Content Cards */
+.content-card {
+    background: linear-gradient(145deg, #ffffff 0%, #f8fafc 100%);
+    border-radius: 12px;
+    padding: 20px;
+    margin-bottom: 20px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05), 0 1px 3px rgba(0, 0, 0, 0.1);
+    border: 1px solid rgba(66, 133, 244, 0.1);
+    transition: all 0.3s ease;
+    position: relative;
+    overflow: hidden;
+}
+
+.content-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 3px;
+    background: linear-gradient(90deg, #4285F4, #34A853, #FBBC04, #EA4335);
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+.content-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1), 0 3px 6px rgba(0, 0, 0, 0.08);
+    border-color: rgba(66, 133, 244, 0.2);
+}
+
+.content-card:hover::before {
+    opacity: 1;
+}
+
+.content-card h4 {
+    margin-top: 0;
+    margin-bottom: 15px;
+    color: #1a202c;
+    font-weight: 600;
+    font-size: 1.2rem;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
 /* Weather display styling */
 .weather-card {
-    background: linear-gradient(to right, #f5f7fa, #e4e7eb);
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border: none;
+}
+
+.weather-card h4 {
+    color: white;
+    margin-bottom: 15px;
+}
+
+.weather-card .card-content {
+    color: white;
 }
 
 .forecast-day {
@@ -922,7 +1032,144 @@ a.interactive-link:hover {
     opacity: 1;
 }
 
-/* Add styles for 3-day forecast in the sidebar */
+/* Enhanced Navigation */
+.day-nav-buttons {
+    background: linear-gradient(145deg, #ffffff 0%, #f8fafc 100%);
+    border-radius: 12px;
+    padding: 20px;
+    margin-bottom: 20px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+    border: 1px solid rgba(66, 133, 244, 0.1);
+}
+
+/* Enhanced Progress Indicator */
+.stProgress > div > div > div {
+    background: linear-gradient(90deg, #4285F4, #34A853, #FBBC04, #EA4335) !important;
+    height: 8px !important;
+    border-radius: 4px !important;
+}
+
+/* Enhanced Buttons */
+.stButton > button {
+    border-radius: 8px !important;
+    font-weight: 500 !important;
+    transition: all 0.3s ease !important;
+    border: 1px solid transparent !important;
+}
+
+.stButton > button:hover {
+    transform: translateY(-1px) !important;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15) !important;
+}
+
+.stButton > button[kind="primary"] {
+    background: linear-gradient(135deg, #4285F4 0%, #34A853 100%) !important;
+    border: none !important;
+}
+
+.stButton > button[kind="secondary"] {
+    background: linear-gradient(145deg, #ffffff 0%, #f8fafc 100%) !important;
+    border: 1px solid rgba(66, 133, 244, 0.2) !important;
+    color: #4285F4 !important;
+}
+
+/* Enhanced Sidebar Styling */
+.css-1d391kg {
+    background: linear-gradient(180deg, #f8fafc 0%, #ffffff 100%);
+}
+
+/* Enhanced Checklist Categories */
+.checklist-category {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 8px 12px;
+    margin: 10px -10px 8px -10px;
+    border-radius: 6px;
+    font-weight: 600;
+    font-size: 0.9rem;
+    text-align: center;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.critical_essentials-category {
+    background: linear-gradient(135deg, #FF6B6B 0%, #FF8E8E 100%) !important;
+}
+
+.weather___safety__norway_essential_-category {
+    background: linear-gradient(135deg, #4ECDC4 0%, #44A08D 100%) !important;
+}
+
+.core_clothing-category {
+    background: linear-gradient(135deg, #45B7D1 0%, #96CEB4 100%) !important;
+}
+
+.hiking___outdoor_gear-category {
+    background: linear-gradient(135deg, #F39C12 0%, #D68910 100%) !important;
+}
+
+.health___personal_care-category {
+    background: linear-gradient(135deg, #9B59B6 0%, #8E44AD 100%) !important;
+}
+
+.essential_tech-category {
+    background: linear-gradient(135deg, #34495E 0%, #2C3E50 100%) !important;
+}
+
+.comfort___convenience-category {
+    background: linear-gradient(135deg, #16A085 0%, #138D75 100%) !important;
+}
+
+.norway_specific_extras-category {
+    background: linear-gradient(135deg, #E74C3C 0%, #C0392B 100%) !important;
+}
+
+.entertainment___optional-category {
+    background: linear-gradient(135deg, #F1C40F 0%, #D4AC0D 100%) !important;
+}
+
+/* Enhanced Activity and Dining Items */
+.activity-item, .dining-item {
+    background: linear-gradient(145deg, #ffffff 0%, #f8fafc 100%);
+    border: 1px solid rgba(66, 133, 244, 0.1);
+    border-radius: 8px;
+    padding: 10px;
+    margin-bottom: 8px;
+    transition: all 0.3s ease;
+    cursor: pointer;
+}
+
+.activity-item:hover, .dining-item:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(66, 133, 244, 0.15);
+    border-color: rgba(66, 133, 244, 0.3);
+    background: linear-gradient(145deg, #f0f8ff 0%, #e6f3ff 100%);
+}
+
+/* Enhanced Image Container */
+.image-container {
+    position: relative;
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+    transition: all 0.3s ease;
+    margin-bottom: 15px;
+}
+
+.image-container:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.15);
+}
+
+.image-container img {
+    border-radius: 12px;
+    transition: transform 0.3s ease;
+}
+
+.image-container:hover img {
+    transform: scale(1.02);
+}
+
+/* 3-day forecast styling */
 .forecast-day-compact {
     background-color: #fff;
     border-radius: 8px;
@@ -989,6 +1236,31 @@ a.interactive-link:hover {
 
 /* Add responsive design for forecast and location links on mobile */
 @media (max-width: 768px) {
+    .main-header h1 {
+        font-size: 2rem !important;
+    }
+    
+    .content-card {
+        padding: 15px !important;
+        margin-bottom: 15px !important;
+    }
+    
+    .day-nav-buttons {
+        padding: 15px !important;
+    }
+    
+    .location-header {
+        font-size: 1.3rem !important;
+    }
+    
+    .activity-item, .dining-item {
+        padding: 8px !important;
+    }
+    
+    .activity-icon, .dining-icon {
+        font-size: 1rem !important;
+    }
+    
     .forecast-day {
         margin-bottom: 8px;
         padding: 8px;
@@ -1012,6 +1284,44 @@ a.interactive-link:hover {
     
     .location-link-name {
         font-size: 0.8rem;
+    }
+}
+
+/* Loading states and animations */
+@keyframes pulse {
+    0% { opacity: 1; }
+    50% { opacity: 0.5; }
+    100% { opacity: 1; }
+}
+
+.loading {
+    animation: pulse 2s infinite;
+}
+
+/* Smooth scrolling */
+html {
+    scroll-behavior: smooth;
+}
+
+/* Enhanced tooltips */
+[title] {
+    position: relative;
+}
+
+/* Print styles */
+@media print {
+    .stSidebar {
+        display: none !important;
+    }
+    
+    .day-nav-buttons {
+        display: none !important;
+    }
+    
+    .content-card {
+        break-inside: avoid;
+        box-shadow: none !important;
+        border: 1px solid #ccc !important;
     }
 }
 """
@@ -1118,8 +1428,6 @@ with st.sidebar.expander("View Checklist", expanded=False):
         for category, items in checklist.items():
             for item in items:
                 st.session_state.checklist_state[item] = False
-    
-    st.markdown('<div style="text-align: center; font-weight: bold; margin-bottom: 10px;">Norway Trip Packing List</div>', unsafe_allow_html=True)
     
     # Display checklist with styling based on categories
     for category, items in checklist.items():
@@ -1351,79 +1659,147 @@ for day in trip_data:
             unsafe_allow_html=True
         )
         
-        # Display activities if available
-        if 'activities' in day and day['activities']:
-            # Get place information with ratings for activities
-            location_context = day["location"].split('→')[0].strip() if '→' in day["location"] else day["location"]
-            activities_with_details = []
-            
-            for activity in day['activities']:
-                # Get Google Maps URL and rating
-                maps_url, rating = get_place_details(activity, location_context)
-                rating_stars = "⭐" * int(rating) + ("½" if rating % 1 >= 0.5 else "")
-                
-                # Create HTML with rating and link
-                activity_html = f"""<li>
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; padding: 6px; border-radius: 6px;" class="clickable-item">
-                        <div>{activity}</div>
-                        <div>
-                            <span style="color: #FFD700; margin-right: 5px;">{rating_stars}</span>
-                            <span style="color: #666;">{rating}/5</span>
-                            <a href="{maps_url}" target="_blank" style="margin-left: 10px; display: inline-flex; align-items: center; justify-content: center; background-color: #4285F4; color: white; width: 28px; height: 28px; border-radius: 50%; text-decoration: none; box-shadow: 0 2px 5px rgba(0,0,0,0.2); transition: all 0.3s;">🗺️</a>
-                        </div>
-                    </div>
-                </li>"""
-                activities_with_details.append(activity_html)
-            
-            # Join all activities HTML
-            activities_html = ''.join(activities_with_details)
-            
-            st.markdown(
-                f"""<div class="content-card">
-                    <h4>🚶‍♂️ Activities</h4>
-                    <div class="card-content interactive-card">
-                        <ul style="list-style-type: none; padding-left: 0;">{activities_html}</ul>
-                    </div>
-                </div>""",
-                unsafe_allow_html=True
-            )
+        # Display activities and dining options side by side for better space efficiency
+        has_activities = 'activities' in day and day['activities']
+        has_dining = 'dining_options' in day and day['dining_options']
         
-        # Display dining options if available
-        if 'dining_options' in day and day['dining_options']:
-            # Get place information with ratings for dining options
-            location_context = day["location"].split('→')[0].strip() if '→' in day["location"] else day["location"]
-            dining_with_details = []
+        if has_activities or has_dining:
+            # Create two-column layout for activities and dining
+            if has_activities and has_dining:
+                # Both sections available - use equal columns
+                activity_col, dining_col = st.columns([1, 1])
+            elif has_activities:
+                # Only activities - use full width
+                activity_col = st.container()
+                dining_col = None
+            else:
+                # Only dining - use full width
+                activity_col = None
+                dining_col = st.container()
             
-            for dining in day['dining_options']:
-                # Get Google Maps URL and rating
-                maps_url, rating = get_place_details(dining, location_context)
-                rating_stars = "⭐" * int(rating) + ("½" if rating % 1 >= 0.5 else "")
-                
-                # Create HTML with rating and link
-                dining_html = f"""<li>
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; padding: 6px; border-radius: 6px;" class="clickable-item">
-                        <div>{dining}</div>
-                        <div>
-                            <span style="color: #FFD700; margin-right: 5px;">{rating_stars}</span>
-                            <span style="color: #666;">{rating}/5</span>
-                            <a href="{maps_url}" target="_blank" style="margin-left: 10px; display: inline-flex; align-items: center; justify-content: center; background-color: #4285F4; color: white; width: 28px; height: 28px; border-radius: 50%; text-decoration: none; box-shadow: 0 2px 5px rgba(0,0,0,0.2); transition: all 0.3s;">🗺️</a>
-                        </div>
-                    </div>
-                </li>"""
-                dining_with_details.append(dining_html)
+            # Display activities
+            if has_activities:
+                with activity_col if activity_col else st.container():
+                    # Get place information with ratings for activities
+                    location_context = day["location"].split('→')[0].strip() if '→' in day["location"] else day["location"]
+                    activities_with_details = []
+                    
+                    for activity in day['activities']:
+                        # Get Google Maps URL and rating
+                        maps_url, rating = get_place_details(activity, location_context)
+                        rating_stars = "⭐" * int(rating) + ("½" if rating % 1 >= 0.5 else "")
+                        
+                        # Add activity-specific icons
+                        activity_icon = "🚶‍♂️"  # default
+                        activity_lower = activity.lower()
+                        if "hik" in activity_lower or "climb" in activity_lower:
+                            activity_icon = "🥾"
+                        elif "swim" in activity_lower or "beach" in activity_lower:
+                            activity_icon = "🏊‍♂️"
+                        elif "photo" in activity_lower or "view" in activity_lower:
+                            activity_icon = "📸"
+                        elif "drive" in activity_lower or "scenic" in activity_lower:
+                            activity_icon = "🚗"
+                        elif "shop" in activity_lower:
+                            activity_icon = "🛍️"
+                        elif "museum" in activity_lower or "gallery" in activity_lower:
+                            activity_icon = "🏛️"
+                        elif "cruise" in activity_lower or "boat" in activity_lower:
+                            activity_icon = "⛵"
+                        elif "flight" in activity_lower or "airport" in activity_lower:
+                            activity_icon = "✈️"
+                        
+                        # Create HTML with rating and link
+                        activity_html = f"""<li>
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; padding: 6px; border-radius: 6px;" class="clickable-item activity-item">
+                                <div style="flex: 1; margin-right: 8px;">
+                                    <span class="activity-icon">{activity_icon}</span>{activity}
+                                </div>
+                                <div style="display: flex; align-items: center; flex-shrink: 0;">
+                                    <span style="color: #FFD700; margin-right: 3px; font-size: 0.8rem;">{rating_stars}</span>
+                                    <span style="color: #666; font-size: 0.8rem; margin-right: 8px;">{rating}/5</span>
+                                    <a href="{maps_url}" target="_blank" style="display: inline-flex; align-items: center; justify-content: center; background-color: #4285F4; color: white; width: 24px; height: 24px; border-radius: 50%; text-decoration: none; box-shadow: 0 2px 5px rgba(0,0,0,0.2); transition: all 0.3s; font-size: 0.7rem;">🗺️</a>
+                                </div>
+                            </div>
+                        </li>"""
+                        activities_with_details.append(activity_html)
+                    
+                    # Join all activities HTML
+                    activities_html = ''.join(activities_with_details)
+                    
+                    st.markdown(
+                        f"""<div class="content-card">
+                            <h4>🚶‍♂️ Activities</h4>
+                            <div class="card-content interactive-card">
+                                <ul style="list-style-type: none; padding-left: 0;">{activities_html}</ul>
+                            </div>
+                        </div>""",
+                        unsafe_allow_html=True
+                    )
             
-            # Join all dining HTML
-            dining_html = ''.join(dining_with_details)
-            
-            st.markdown(
-                f"""<div class="content-card">
-                    <h4>🍽️ Dining Options</h4>
-                    <div class="card-content interactive-card">
-                        <ul style="list-style-type: none; padding-left: 0;">{dining_html}</ul>
-                    </div>
-                </div>""",
-                unsafe_allow_html=True
-            )
+            # Display dining options
+            if has_dining:
+                with dining_col if dining_col else st.container():
+                    # Get place information with ratings for dining options
+                    location_context = day["location"].split('→')[0].strip() if '→' in day["location"] else day["location"]
+                    dining_with_details = []
+                    
+                    for dining in day['dining_options']:
+                        # Get Google Maps URL and rating
+                        maps_url, rating = get_place_details(dining, location_context)
+                        rating_stars = "⭐" * int(rating) + ("½" if rating % 1 >= 0.5 else "")
+                        
+                        # Add dining-specific icons
+                        dining_icon = "🍽️"  # default
+                        dining_lower = dining.lower()
+                        if "seafood" in dining_lower or "fish" in dining_lower:
+                            dining_icon = "🐟"
+                        elif "restaurant" in dining_lower:
+                            dining_icon = "🍴"
+                        elif "cafe" in dining_lower or "coffee" in dining_lower:
+                            dining_icon = "☕"
+                        elif "market" in dining_lower:
+                            dining_icon = "🏪"
+                        elif "breakfast" in dining_lower:
+                            dining_icon = "🥐"
+                        elif "lunch" in dining_lower or "picnic" in dining_lower:
+                            dining_icon = "🥪"
+                        elif "dinner" in dining_lower:
+                            dining_icon = "🍽️"
+                        elif "snack" in dining_lower:
+                            dining_icon = "🥨"
+                        elif "brewery" in dining_lower or "beer" in dining_lower:
+                            dining_icon = "🍺"
+                        elif "flight" in dining_lower or "airport" in dining_lower:
+                            dining_icon = "✈️"
+                        
+                        # Create HTML with rating and link
+                        dining_html = f"""<li>
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; padding: 6px; border-radius: 6px;" class="clickable-item dining-item">
+                                <div style="flex: 1; margin-right: 8px;">
+                                    <span class="dining-icon">{dining_icon}</span>{dining}
+                                </div>
+                                <div style="display: flex; align-items: center; flex-shrink: 0;">
+                                    <span style="color: #FFD700; margin-right: 3px; font-size: 0.8rem;">{rating_stars}</span>
+                                    <span style="color: #666; font-size: 0.8rem; margin-right: 8px;">{rating}/5</span>
+                                    <a href="{maps_url}" target="_blank" style="display: inline-flex; align-items: center; justify-content: center; background-color: #4285F4; color: white; width: 24px; height: 24px; border-radius: 50%; text-decoration: none; box-shadow: 0 2px 5px rgba(0,0,0,0.2); transition: all 0.3s; font-size: 0.7rem;">🗺️</a>
+                                </div>
+                            </div>
+                        </li>"""
+                        dining_with_details.append(dining_html)
+                    
+                    # Join all dining HTML
+                    dining_html = ''.join(dining_with_details)
+                    
+                    st.markdown(
+                        f"""<div class="content-card">
+                            <h4>🍽️ Dining Options</h4>
+                            <div class="card-content interactive-card">
+                                <ul style="list-style-type: none; padding-left: 0;">{dining_html}</ul>
+                            </div>
+                        </div>""",
+                        unsafe_allow_html=True
+                    )
                 
         
         # Create a section for images and location links side by side
