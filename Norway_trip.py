@@ -1078,6 +1078,29 @@ a.interactive-link:hover {
     background: linear-gradient(180deg, #f8fafc 0%, #ffffff 100%);
 }
 
+/* Enhanced Selectbox Styling */
+.stSelectbox > div > div {
+    background-color: white !important;
+    border: 1px solid rgba(66, 133, 244, 0.2) !important;
+    border-radius: 8px !important;
+}
+
+.stSelectbox > div > div:focus-within {
+    border-color: #4285F4 !important;
+    box-shadow: 0 0 0 2px rgba(66, 133, 244, 0.2) !important;
+}
+
+/* Day status indicators styling */
+.day-status-indicator {
+    background: linear-gradient(135deg, #E8F5E8 0%, #F0F8FF 100%);
+    padding: 8px;
+    border-radius: 6px;
+    margin: 10px 0;
+    text-align: center;
+    font-size: 0.8rem;
+    border: 1px solid rgba(76, 175, 80, 0.2);
+}
+
 /* Enhanced Checklist Categories */
 .checklist-category {
     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
@@ -1417,6 +1440,28 @@ st.markdown('<div class="main-header"><h1>🇳🇴 Norway Adventure - August 202
 if 'selected_date' not in st.session_state:
     st.session_state.selected_date = trip_data[0]["date"]
 
+# Initialize session state for personal notes
+if 'personal_notes' not in st.session_state:
+    st.session_state.personal_notes = {}
+    
+# Initialize session state for favorite places
+if 'favorite_places' not in st.session_state:
+    st.session_state.favorite_places = set()
+
+# Initialize session state for visited status
+if 'visited_status' not in st.session_state:
+    st.session_state.visited_status = {}
+
+# Initialize session state for personal preferences
+if 'preferences' not in st.session_state:
+    st.session_state.preferences = {
+        'preferred_activities': [],
+        'dietary_restrictions': [],
+        'budget_level': 'medium',
+        'fitness_level': 'moderate',
+        'weather_preference': 'any'
+    }
+
 # First add the packing checklist at the top of the sidebar
 st.sidebar.markdown('<div class="sidebar-header">📋 Packing Checklist</div>', unsafe_allow_html=True)
 
@@ -1440,17 +1485,233 @@ with st.sidebar.expander("View Checklist", expanded=False):
             checked = st.checkbox(item, key=unique_key, value=st.session_state.checklist_state.get(item, False))
             st.session_state.checklist_state[item] = checked
 
-# Now add the day selection after the checklist
-st.sidebar.markdown('<div class="sidebar-header">Select a Day</div>', unsafe_allow_html=True)
+# Add personal preferences panel
+st.sidebar.markdown('<div class="sidebar-header">⚙️ Personal Preferences</div>', unsafe_allow_html=True)
 
-for day in trip_data:
-    if st.sidebar.button(day["date"], key=day["date"], help=f"View {day['location']}", 
-                       use_container_width=True,
-                       type="primary" if day["date"] == st.session_state.selected_date else "secondary"):
-        st.session_state.selected_date = day["date"]
+with st.sidebar.expander("Customize Your Trip", expanded=True):
+    st.markdown("**👇 Select your preferences to get personalized recommendations!**")
+    
+    st.markdown("**Activity Preferences:**")
+    activity_options = ["Hiking", "Photography", "Museums", "Beaches", "Scenic Drives", "Food Tours", "Wildlife Viewing", "Adventure Sports"]
+    selected_activities = st.multiselect(
+        "What activities interest you most?",
+        activity_options,
+        default=st.session_state.preferences['preferred_activities'],
+        key="activity_prefs",
+        help="Select activities you enjoy - you'll get personalized recommendations!"
+    )
+    st.session_state.preferences['preferred_activities'] = selected_activities
+    
+    st.markdown("**Fitness Level:**")
+    fitness_level = st.radio(
+        "How would you rate your fitness level?",
+        ["Light", "Moderate", "Active", "Very Active"],
+        index=["light", "moderate", "active", "very_active"].index(st.session_state.preferences['fitness_level']) if st.session_state.preferences['fitness_level'] in ["light", "moderate", "active", "very_active"] else 1,
+        key="fitness_level",
+        help="This affects hiking and activity recommendations"
+    )
+    st.session_state.preferences['fitness_level'] = fitness_level.lower()
+    
+    st.markdown("**Budget Level:**")
+    budget_level = st.select_slider(
+        "What's your budget preference?",
+        options=["Budget", "Medium", "Premium", "Luxury"],
+        value=st.session_state.preferences['budget_level'].title(),
+        key="budget_level",
+        help="Get dining and activity suggestions matching your budget"
+    )
+    st.session_state.preferences['budget_level'] = budget_level.lower()
+    
+    st.markdown("**Dietary Restrictions:**")
+    dietary_options = ["None", "Vegetarian", "Vegan", "Gluten-free", "Seafood allergy", "Nut allergy"]
+    dietary_restrictions = st.multiselect(
+        "Any dietary restrictions?",
+        dietary_options,
+        default=st.session_state.preferences['dietary_restrictions'],
+        key="dietary_restrictions",
+        help="Get personalized dining recommendations and warnings"
+    )
+    st.session_state.preferences['dietary_restrictions'] = dietary_restrictions
+    
+    # Show what will change based on selections
+    if selected_activities or fitness_level != "Moderate" or budget_level != "Medium" or (dietary_restrictions and "None" not in dietary_restrictions):
+        st.success("✅ Preferences saved! Look for:")
+        changes = []
+        if selected_activities:
+            changes.append("🎯 Personalized activity recommendations")
+        if budget_level != "medium":
+            changes.append("💰 Budget-specific dining suggestions") 
+        if dietary_restrictions and "None" not in dietary_restrictions:
+            changes.append("🍽️ Dietary restriction alerts")
+        if fitness_level in ["light", "very_active"]:
+            changes.append("🥾 Fitness-matched activity advice")
+            
+        for change in changes:
+            st.write(f"• {change}")
+        st.info("💡 Navigate to different days to see personalized recommendations appear!")
+    else:
+        st.info("💡 Make selections above to see personalized recommendations throughout your trip!")
+
+# Add trip progress tracker
+st.sidebar.markdown('<div class="sidebar-header">📈 Trip Progress</div>', unsafe_allow_html=True)
+
+with st.sidebar.expander("Track Your Journey", expanded=False):
+    # Calculate progress
+    total_days = len(trip_data)
+    completed_days = len([day for day in trip_data if st.session_state.visited_status.get(day["date"], False)])
+    progress_percentage = (completed_days / total_days) * 100 if total_days > 0 else 0
+    
+    st.metric("Days Completed", f"{completed_days}/{total_days}", f"{progress_percentage:.1f}%")
+    
+    # Favorite places count
+    favorite_count = len(st.session_state.favorite_places)
+    st.metric("Favorite Places", favorite_count)
+    
+    # Notes count
+    notes_count = len([note for note in st.session_state.personal_notes.values() if note.strip()])
+    st.metric("Personal Notes", notes_count)
+
+# Now add the day selection after the checklist
+st.sidebar.markdown('<div class="sidebar-header">📅 Select a Day</div>', unsafe_allow_html=True)
+
+# Create dropdown for day selection
+day_options = [f"{day['date']} - {day['location']}" for day in trip_data]
+current_selection = None
+
+# Find current selection index
+for i, day in enumerate(trip_data):
+    if day["date"] == st.session_state.selected_date:
+        current_selection = i
+        break
+
+if current_selection is None:
+    current_selection = 0
+
+selected_index = st.sidebar.selectbox(
+    "Choose your day:",
+    range(len(day_options)),
+    format_func=lambda x: day_options[x],
+    index=current_selection,
+    key="day_selector"
+)
+
+# Update selected date based on dropdown selection
+new_selected_date = trip_data[selected_index]["date"]
+if new_selected_date != st.session_state.selected_date:
+    st.session_state.selected_date = new_selected_date
+    st.rerun()
+
+# Add quick navigation buttons for previous/next day
+col1, col2 = st.sidebar.columns(2)
+with col1:
+    if selected_index > 0:
+        if st.button("⬅️ Previous", key="prev_day_sidebar", use_container_width=True):
+            st.session_state.selected_date = trip_data[selected_index - 1]["date"]
+            st.rerun()
+with col2:
+    if selected_index < len(trip_data) - 1:
+        if st.button("Next ➡️", key="next_day_sidebar", use_container_width=True):
+            st.session_state.selected_date = trip_data[selected_index + 1]["date"]
+            st.rerun()
+
+# Show current day status indicators
+current_day = trip_data[selected_index]
+status_indicators = []
+
+if st.session_state.visited_status.get(current_day["date"], False):
+    status_indicators.append("✅ Visited")
+if current_day["location"] in st.session_state.favorite_places:
+    status_indicators.append("💖 Favorite")
+if st.session_state.personal_notes.get(current_day["date"], "").strip():
+    status_indicators.append("📝 Has Notes")
+
+if status_indicators:
+    st.sidebar.markdown(
+        f'<div style="background: linear-gradient(135deg, #E8F5E8 0%, #F0F8FF 100%); '
+        f'padding: 8px; border-radius: 6px; margin: 10px 0; text-align: center; font-size: 0.8rem;">'
+        f'{" • ".join(status_indicators)}</div>',
+        unsafe_allow_html=True
+    )
 
 # Hidden functionality for developers - add a small discrete link at the bottom of the sidebar
 with st.sidebar.expander("⚙️ Developer Options", expanded=False):
+    # Add trip overview dashboard button
+    if st.button("📊 Trip Overview Dashboard", key="dashboard_toggle", use_container_width=True):
+        st.session_state.show_dashboard = not st.session_state.get('show_dashboard', False)
+    
+    # Display dashboard content when toggled on
+    if st.session_state.get('show_dashboard', False):
+        st.markdown('<div class="sidebar-header" style="margin: 20px 0;">📊 Trip Overview Dashboard</div>', unsafe_allow_html=True)
+        
+        # Trip statistics
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            total_days = len(trip_data)
+            st.metric("Total Days", total_days, "15-day adventure")
+            
+            completed_days = len([day for day in trip_data if st.session_state.visited_status.get(day["date"], False)])
+            completion_rate = (completed_days / total_days) * 100 if total_days > 0 else 0
+            st.metric("Completed", f"{completed_days}/{total_days}", f"{completion_rate:.1f}%")
+        
+        with col2:
+            favorite_count = len(st.session_state.favorite_places)
+            st.metric("Favorite Places", favorite_count, "❤️")
+            
+            notes_count = len([note for note in st.session_state.personal_notes.values() if note.strip()])
+            st.metric("Personal Notes", notes_count, "📝")
+        
+        # Preference matching analysis
+        st.markdown("### 🎯 Preference Match")
+        
+        user_activities = st.session_state.preferences.get('preferred_activities', [])
+        if user_activities:
+            match_scores = []
+            for day in trip_data:
+                location_activities = ' '.join(day.get('activities', [])).lower()
+                matches = sum(1 for pref in user_activities if pref.lower() in location_activities)
+                match_scores.append(matches)
+            
+            avg_match = sum(match_scores) / len(match_scores) if match_scores else 0
+            max_possible = len(user_activities)
+            match_percentage = (avg_match / max_possible) * 100 if max_possible > 0 else 0
+            
+            st.progress(match_percentage / 100)
+            st.write(f"**{match_percentage:.1f}%** match")
+            
+            # Show top matching days
+            day_matches = [(trip_data[i], match_scores[i]) for i in range(len(trip_data))]
+            day_matches.sort(key=lambda x: x[1], reverse=True)
+            
+            if day_matches[0][1] > 0:
+                st.write("**Best days:**")
+                for day, score in day_matches[:2]:
+                    if score > 0:
+                        st.write(f"• {day['date']} - {day['location']}")
+        
+        # Budget and fitness analysis
+        budget_level = st.session_state.preferences.get('budget_level', 'medium')
+        st.write(f"**Budget:** {budget_level.title()}")
+        
+        fitness_level = st.session_state.preferences.get('fitness_level', 'moderate')
+        st.write(f"**Fitness:** {fitness_level.title()}")
+        
+        # Packing progress
+        packed_count = sum(1 for item in st.session_state.checklist_state.values() if item)
+        total_items = len([item for category in checklist.values() for item in category])
+        packing_progress = (packed_count / total_items) * 100 if total_items > 0 else 0
+        
+        st.markdown("### 🎒 Packing")
+        st.progress(packing_progress / 100)
+        st.write(f"**{packed_count}/{total_items}** items ({packing_progress:.1f}%)")
+        
+        if packing_progress < 100:
+            remaining = total_items - packed_count
+            days_until_trip = (datetime(2025, 8, 2) - datetime.now()).days
+            if days_until_trip > 0:
+                items_per_day = remaining / days_until_trip
+                st.write(f"💡 Pack {items_per_day:.1f} items/day")
+    
     # Add button to refresh image mapping
     if st.button("🔄 Refresh Image Mapping", type="primary", use_container_width=True):
         day_to_images = update_image_mapping()
@@ -1481,6 +1742,96 @@ with st.sidebar.expander("⚙️ Developer Options", expanded=False):
     # Show image count
     total_images = len(gallery_images)
     st.write(f"📸 Total images: {total_images}")
+    
+    # Debug preferences
+    if st.checkbox("🔍 Show Preferences Debug"):
+        st.write("**Current Preferences:**")
+        st.json(st.session_state.preferences)
+        st.write("**Personal Notes:**")
+        st.json(st.session_state.personal_notes)
+        st.write("**Favorite Places:**")
+        st.write(list(st.session_state.favorite_places))
+        st.write("**Visited Status:**")
+        st.json(st.session_state.visited_status)
+
+# Add Export & Sharing section
+st.sidebar.markdown('<div class="sidebar-header">📤 Export & Share</div>', unsafe_allow_html=True)
+
+with st.sidebar.expander("Export Your Trip", expanded=False):
+    # Export personal notes
+    if st.button("📝 Export Notes as Text", use_container_width=True):
+        notes_content = "# Norway Trip 2025 - Personal Notes\n\n"
+        for date, note in st.session_state.personal_notes.items():
+            if note.strip():
+                notes_content += f"## {date}\n{note}\n\n"
+        
+        st.download_button(
+            label="Download Notes.txt",
+            data=notes_content,
+            file_name="norway_trip_notes.txt",
+            mime="text/plain"
+        )
+    
+    # Export itinerary summary
+    if st.button("📋 Export Itinerary Summary", use_container_width=True):
+        itinerary_content = "# Norway Adventure 2025 - Itinerary\n\n"
+        for day in trip_data:
+            visited_status = "✅ Visited" if st.session_state.visited_status.get(day["date"], False) else "⏳ Planned"
+            favorite_status = "💖 Favorite" if day["location"] in st.session_state.favorite_places else ""
+            
+            itinerary_content += f"## {day['date']} - {day['location']} {visited_status} {favorite_status}\n\n"
+            itinerary_content += f"{day['details']}\n\n"
+            
+            if day.get('activities'):
+                itinerary_content += "**Activities:**\n"
+                for activity in day['activities']:
+                    itinerary_content += f"- {activity}\n"
+                itinerary_content += "\n"
+            
+            if day.get('dining_options'):
+                itinerary_content += "**Dining:**\n"
+                for dining in day['dining_options']:
+                    itinerary_content += f"- {dining}\n"
+                itinerary_content += "\n"
+            
+            # Add personal notes if any
+            personal_note = st.session_state.personal_notes.get(day["date"], "")
+            if personal_note.strip():
+                itinerary_content += f"**Personal Notes:**\n{personal_note}\n\n"
+            
+            itinerary_content += "---\n\n"
+        
+        st.download_button(
+            label="Download Itinerary.md",
+            data=itinerary_content,
+            file_name="norway_trip_itinerary.md",
+            mime="text/markdown"
+        )
+    
+    # Export packing checklist
+    if st.button("🎒 Export Packing List", use_container_width=True):
+        packed_items = []
+        unpacked_items = []
+        
+        for category, items in checklist.items():
+            for item in items:
+                if st.session_state.checklist_state.get(item, False):
+                    packed_items.append(f"✅ {item}")
+                else:
+                    unpacked_items.append(f"⏳ {item}")
+        
+        checklist_content = "# Norway Trip 2025 - Packing Checklist\n\n"
+        checklist_content += f"## Packed Items ({len(packed_items)})\n"
+        checklist_content += "\n".join(packed_items) + "\n\n"
+        checklist_content += f"## Still to Pack ({len(unpacked_items)})\n"
+        checklist_content += "\n".join(unpacked_items)
+        
+        st.download_button(
+            label="Download Packing_List.txt",
+            data=checklist_content,
+            file_name="norway_packing_checklist.txt",
+            mime="text/plain"
+        )
 
 selected_date = st.session_state.selected_date
 
@@ -1491,30 +1842,26 @@ for day in trip_data:
         # Find the current day index
         current_index = trip_data.index(day)
         
-        # Create container for navigation with more compact layout
-        nav_container = st.container()
-        with nav_container:
-            st.markdown('<div class="day-nav-buttons">', unsafe_allow_html=True)
-            col1, col2, col3 = st.columns([1, 6, 1])
-            
-            # Previous day button with improved styling
-            if current_index > 0:
-                prev_day = trip_data[current_index - 1]
-                if col1.button("⬅️", help=f"Go to {prev_day['date']}", key="prev_day_btn", use_container_width=True):
-                    st.session_state.selected_date = prev_day["date"]
-                    st.rerun()
-            
-            # Display header in center column with compact styling
-            col2.markdown(f'<h2 class="location-header">📍 {day["location"]}</h2>', unsafe_allow_html=True)
-            col2.markdown(f'<h3 class="date-subheader">{day["date"]}</h3>', unsafe_allow_html=True)
-            
-            # Next day button with improved styling
-            if current_index < len(trip_data) - 1:
-                next_day = trip_data[current_index + 1]
-                if col3.button("➡️", help=f"Go to {next_day['date']}", key="next_day_btn", use_container_width=True):
-                    st.session_state.selected_date = next_day["date"]
-                    st.rerun()
-            st.markdown('</div>', unsafe_allow_html=True)
+        # Create navigation with more compact layout
+        col1, col2, col3 = st.columns([1, 6, 1])
+        
+        # Previous day button with improved styling
+        if current_index > 0:
+            prev_day = trip_data[current_index - 1]
+            if col1.button("⬅️", help=f"Go to {prev_day['date']}", key="prev_day_btn", use_container_width=True):
+                st.session_state.selected_date = prev_day["date"]
+                st.rerun()
+        
+        # Display header in center column with compact styling
+        col2.markdown(f'<h2 class="location-header">📍 {day["location"]}</h2>', unsafe_allow_html=True)
+        col2.markdown(f'<h3 class="date-subheader">{day["date"]}</h3>', unsafe_allow_html=True)
+        
+        # Next day button with improved styling
+        if current_index < len(trip_data) - 1:
+            next_day = trip_data[current_index + 1]
+            if col3.button("➡️", help=f"Go to {next_day['date']}", key="next_day_btn", use_container_width=True):
+                st.session_state.selected_date = next_day["date"]
+                st.rerun()
         
         # Add compact progress indicator with label
         progress = (current_index + 1) / len(trip_data)
@@ -1653,11 +2000,204 @@ for day in trip_data:
         # Display details with improved formatting and more compact design
         st.markdown(
             f"""<div class="content-card">
-                <h4>Itinerary Details</h4>
+                <h4>📅 Itinerary Details</h4>
                 <div class="card-content">{day['details']}</div>
             </div>""", 
             unsafe_allow_html=True
         )
+        
+        # Personal trip features
+        col1, col2, col3 = st.columns([1, 1, 1])
+        
+        with col1:
+            # Mark as visited checkbox
+            visited_key = f"visited_{day['date']}"
+            is_visited = st.checkbox(
+                "✅ Mark as Visited", 
+                value=st.session_state.visited_status.get(day["date"], False),
+                key=visited_key
+            )
+            st.session_state.visited_status[day["date"]] = is_visited
+        
+        with col2:
+            # Add to favorites button
+            is_favorite = day["location"] in st.session_state.favorite_places
+            if st.button(
+                f"{'💖 Remove from Favorites' if is_favorite else '🤍 Add to Favorites'}", 
+                key=f"fav_{day['date']}"
+            ):
+                if is_favorite:
+                    st.session_state.favorite_places.discard(day["location"])
+                    st.success(f"Removed {day['location']} from favorites!")
+                else:
+                    st.session_state.favorite_places.add(day["location"])
+                    st.success(f"Added {day['location']} to favorites!")
+                st.rerun()
+        
+        with col3:
+            # Weather preference indicator
+            user_weather_pref = st.session_state.preferences.get('weather_preference', 'any')
+            if user_weather_pref != 'any':
+                weather_match = "☀️ Great weather match!" if user_weather_pref in day.get('weather_keywords', []) else "🌤️ Check weather"
+                st.info(weather_match)
+        
+        # Personal notes section
+        st.markdown(
+            f"""<div class="content-card">
+                <h4>📝 Personal Notes & Memories</h4>
+                <div class="card-content">
+            """, 
+            unsafe_allow_html=True
+        )
+        
+        # Text area for personal notes
+        note_key = f"note_{day['date']}"
+        current_note = st.session_state.personal_notes.get(day["date"], "")
+        
+        personal_note = st.text_area(
+            "Add your thoughts, memories, or planning notes:",
+            value=current_note,
+            height=100,
+            key=note_key,
+            placeholder="Write about your experiences, things to remember, or planning notes..."
+        )
+        
+        if personal_note != current_note:
+            st.session_state.personal_notes[day["date"]] = personal_note
+        
+        # Quick note buttons
+        quick_notes = ["Amazing views!", "Great food", "Weather was perfect", "Challenging hike", "Very crowded", "Hidden gem"]
+        
+        st.markdown("**Quick notes:**")
+        cols = st.columns(6)  # Use 6 columns for a single row
+        for i, quick_note in enumerate(quick_notes):
+            with cols[i]:
+                if st.button(quick_note, key=f"quick_{day['date']}_{i}"):
+                    current = st.session_state.personal_notes.get(day["date"], "")
+                    if quick_note not in current:
+                        new_note = f"{current}\n• {quick_note}".strip()
+                        st.session_state.personal_notes[day["date"]] = new_note
+                        st.rerun()
+        
+        st.markdown("</div></div>", unsafe_allow_html=True)
+        
+        # Add a prominent personalization summary if user has customized preferences
+        user_activities = st.session_state.preferences.get('preferred_activities', [])
+        fitness_level = st.session_state.preferences.get('fitness_level', 'moderate')
+        budget_level = st.session_state.preferences.get('budget_level', 'medium')
+        dietary_restrictions = st.session_state.preferences.get('dietary_restrictions', [])
+        
+        has_customizations = (
+            user_activities or 
+            fitness_level != 'moderate' or 
+            budget_level != 'medium' or 
+            (dietary_restrictions and "None" not in dietary_restrictions)
+        )
+        
+        if has_customizations:
+            st.markdown(
+                f"""<div class="content-card" style="background: linear-gradient(135deg, #E8F5E8 0%, #E3F2FD 100%); border: 3px solid #4CAF50; box-shadow: 0 6px 20px rgba(76, 175, 80, 0.3);">
+                    <h4>🎯 Your Personal Trip Profile - Active</h4>
+                    <div class="card-content">
+                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 15px;">
+                            <div style="background: rgba(76, 175, 80, 0.1); padding: 10px; border-radius: 6px;">
+                                <strong>🎪 Activities You Love:</strong><br>
+                                <span style="color: #2E7D32; font-weight: 600;">{', '.join(user_activities) if user_activities else 'Not specified'}</span>
+                            </div>
+                            <div style="background: rgba(33, 150, 243, 0.1); padding: 10px; border-radius: 6px;">
+                                <strong>💪 Fitness Level:</strong><br>
+                                <span style="color: #1976D2; font-weight: 600;">{fitness_level.title()}</span>
+                            </div>
+                            <div style="background: rgba(255, 193, 7, 0.1); padding: 10px; border-radius: 6px;">
+                                <strong>💰 Budget Preference:</strong><br>
+                                <span style="color: #F57C00; font-weight: 600;">{budget_level.title()}</span>
+                            </div>
+                            <div style="background: rgba(156, 39, 176, 0.1); padding: 10px; border-radius: 6px;">
+                                <strong>🍽️ Dietary Needs:</strong><br>
+                                <span style="color: #7B1FA2; font-weight: 600;">{', '.join(dietary_restrictions) if dietary_restrictions and 'None' not in dietary_restrictions else 'None specified'}</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>""", 
+                unsafe_allow_html=True
+            )
+            
+            # Make the green box clickable to toggle examples
+            if st.button("👀 See Examples of Personalization in Action", 
+                       key="toggle_examples", 
+                       use_container_width=True,
+                       help="Click to see personalization examples"):
+                # Toggle the examples visibility
+                if 'show_examples' not in st.session_state:
+                    st.session_state.show_examples = False
+                st.session_state.show_examples = not st.session_state.show_examples
+        else:
+            st.markdown(
+                f"""<div class="content-card" style="background: linear-gradient(135deg, #FFF3E0 0%, #FFECB3 100%); border: 2px solid #FF9800;">
+                    <h4>⚙️ Trip Customization Available</h4>
+                    <div class="card-content">
+                        <div style="text-align: center; padding: 20px;">
+                            <div style="font-size: 3rem; margin-bottom: 10px;">🎯</div>
+                            <div style="font-size: 1.2rem; font-weight: 600; margin-bottom: 10px; color: #E65100;">
+                                Get Personalized Recommendations!
+                            </div>
+                            <div style="margin-bottom: 15px; color: #BF360C;">
+                                Set your preferences in the sidebar to see custom suggestions for:
+                            </div>
+                            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; margin: 15px 0;">
+                                <div style="background: rgba(255, 152, 0, 0.1); padding: 8px; border-radius: 6px;">🥾 Activity matching</div>
+                                <div style="background: rgba(255, 152, 0, 0.1); padding: 8px; border-radius: 6px;">🍽️ Dining suggestions</div>
+                                <div style="background: rgba(255, 152, 0, 0.1); padding: 8px; border-radius: 6px;">💪 Fitness recommendations</div>
+                                <div style="background: rgba(255, 152, 0, 0.1); padding: 8px; border-radius: 6px;">💰 Budget guidance</div>
+                            </div>
+                            <div style="margin-top: 15px; padding: 8px; background: rgba(255, 152, 0, 0.2); border-radius: 6px; font-weight: 600;">
+                                👈 Open "Customize Your Trip" in the sidebar to get started!
+                            </div>
+                        </div>
+                    </div>
+                </div>""", 
+                unsafe_allow_html=True
+            )
+        
+        # Show example of what personalization looks like - only when toggled
+        if st.session_state.get('show_examples', False):
+            st.markdown("### 📚 Personalization Examples")
+            with st.container():
+                st.markdown("""
+                **Example 1: Moderate Fitness + Hiking Interest**
+                - Day 14 (Kjerag): "⚠️ Very challenging hikes - consider shorter alternatives or guided tours"
+                - Day 4 (Beaches): "🚶‍♂️ Consider easier hiking trails for coastal walks"
+                
+                **Example 2: Very Active + Wildlife Viewing Interest**  
+                - Day 6 (Nusfjord): "🦅 Exceptional wildlife viewing opportunities - bring binoculars!"
+                - Day 14 (Kjerag): "� These challenging hikes are perfect for your fitness level!"
+                
+                **Example 3: Budget Level + Food Tours Interest**
+                - Budget: "💰 Look for free activities and local markets for affordable meals"
+                - Luxury: "🍾 Don't miss Michelin-recommended restaurants!"
+                
+                **Example 4: Dietary Restrictions**
+                - Vegetarian: "🥗 Norway has great vegetarian options - try local root vegetables"
+                - Gluten-free: "🌾 Most restaurants can accommodate - ask for 'glutenfri'"
+                
+                **🎯 Try it yourself:**
+                1. Set preferences in the sidebar
+                2. Navigate to Day 14 (Kjerag Hike) or Day 6 (Nusfjord)  
+                3. Look for colored recommendation boxes below activities!
+                """)
+                
+                st.success("💡 **Pro tip:** Different combinations create unique recommendations for each day!")
+                
+                # Additional dining examples
+                st.markdown("---")
+                st.markdown("**🍽️ SPECIFIC DINING EXAMPLES:**")
+                st.markdown("""
+                **Budget + Vegetarian in Bergen:** "🥗 Bergen has excellent vegetarian cafes in the old town"
+                
+                **Luxury + Seafood Allergy in Lofoten:** "🥔 Focus on local potatoes and root vegetables - Lofoten specialties!"
+                
+                **Premium + Gluten-free in Stavanger:** "👨‍🍳 High-end restaurants excel at gluten-free fine dining"
+                """)
         
         # Display activities and dining options side by side for better space efficiency
         has_activities = 'activities' in day and day['activities']
@@ -1680,11 +2220,110 @@ for day in trip_data:
             # Display activities
             if has_activities:
                 with activity_col if activity_col else st.container():
+                    # Get user preferences to customize activity display
+                    user_activities = st.session_state.preferences.get('preferred_activities', [])
+                    fitness_level = st.session_state.preferences.get('fitness_level', 'moderate')
+                    budget_level = st.session_state.preferences.get('budget_level', 'medium')
+                    
                     # Get place information with ratings for activities
                     location_context = day["location"].split('→')[0].strip() if '→' in day["location"] else day["location"]
+                    
+                    # Customize activities based on preferences
+                    customized_activities = []
+                    base_activities = day['activities'].copy()
+                    
+                    # Add additional personalized activities based on preferences
+                    location_lower = day["location"].lower()
+                    
+                    # Add preference-based activities
+                    if "Photography" in user_activities:
+                        if "bergen" in location_lower and "Photography walk in old town" not in base_activities:
+                            customized_activities.append("📸 Photography walk in old town")
+                        elif "lofoten" in location_lower and "Golden hour photography" not in base_activities:
+                            customized_activities.append("📸 Golden hour photography")
+                        elif "fjord" in location_lower and "Scenic photography spots" not in base_activities:
+                            customized_activities.append("📸 Scenic photography spots")
+                    
+                    if "Museums" in user_activities:
+                        if "bergen" in location_lower and "Bergen Art Museums" not in base_activities:
+                            customized_activities.append("🏛️ Bergen Art Museums")
+                        elif "stavanger" in location_lower and "Norwegian Petroleum Museum" not in base_activities:
+                            customized_activities.append("🏛️ Norwegian Petroleum Museum")
+                    
+                    if "Food Tours" in user_activities:
+                        if "bergen" in location_lower and "Fish market food tour" not in base_activities:
+                            customized_activities.append("🍽️ Fish market food tour")
+                        elif "lofoten" in location_lower and "Local seafood tasting" not in base_activities:
+                            customized_activities.append("🍽️ Local seafood tasting")
+                    
+                    if "Wildlife Viewing" in user_activities:
+                        if "lofoten" in location_lower and "Sea eagle watching" not in base_activities:
+                            customized_activities.append("🦅 Sea eagle watching")
+                        elif "fjord" in location_lower and "Seal spotting" not in base_activities:
+                            customized_activities.append("🦭 Seal spotting")
+                    
+                    # Fitness-based activity modifications
+                    if fitness_level == "light":
+                        if "henningsvær" in location_lower and "Art gallery walking tour" not in base_activities:
+                            customized_activities.append("🎨 Art gallery walking tour")
+                        if "bergen" in location_lower and "Funicular ride to Mount Fløyen" not in base_activities:
+                            customized_activities.append("🚡 Funicular ride to Mount Fløyen")
+                    elif fitness_level in ["active", "very_active"]:
+                        if any(keyword in location_lower for keyword in ["kjerag", "pulpit"]):
+                            customized_activities.append("🧗‍♂️ Extended hiking routes")
+                        if "lofoten" in location_lower and "Challenging coastal hikes" not in base_activities:
+                            customized_activities.append("🥾 Challenging coastal hikes")
+                    
+                    # Budget-based activity suggestions
+                    if budget_level == "budget":
+                        customized_activities.append("💰 Free viewpoint walks")
+                        if "bergen" in location_lower:
+                            customized_activities.append("🚶‍♂️ Self-guided walking tour")
+                    elif budget_level == "luxury":
+                        if "bergen" in location_lower:
+                            customized_activities.append("✨ Private helicopter tour")
+                        elif "fjord" in location_lower:
+                            customized_activities.append("🛥️ Private fjord cruise")
+                    
+                    # Combine base activities with customized ones
+                    all_activities = base_activities + customized_activities
+                    
+                    # Sort activities by user preference relevance
+                    prioritized_activities = []
+                    other_activities = []
+                    
+                    for activity in all_activities:
+                        activity_lower = activity.lower()
+                        is_preferred = False
+                        
+                        if "Hiking" in user_activities and any(keyword in activity_lower for keyword in ["hik", "walk", "trail", "climb"]):
+                            is_preferred = True
+                        elif "Photography" in user_activities and any(keyword in activity_lower for keyword in ["photo", "view", "scenic"]):
+                            is_preferred = True
+                        elif "Museums" in user_activities and any(keyword in activity_lower for keyword in ["museum", "gallery", "art"]):
+                            is_preferred = True
+                        elif "Food Tours" in user_activities and any(keyword in activity_lower for keyword in ["food", "market", "tasting"]):
+                            is_preferred = True
+                        elif "Wildlife Viewing" in user_activities and any(keyword in activity_lower for keyword in ["wildlife", "eagle", "seal", "whale"]):
+                            is_preferred = True
+                        elif "Scenic Drives" in user_activities and any(keyword in activity_lower for keyword in ["drive", "scenic", "route"]):
+                            is_preferred = True
+                        elif "Beaches" in user_activities and any(keyword in activity_lower for keyword in ["beach", "swim", "coast"]):
+                            is_preferred = True
+                        elif "Adventure Sports" in user_activities and any(keyword in activity_lower for keyword in ["climb", "extreme", "adventure"]):
+                            is_preferred = True
+                        
+                        if is_preferred:
+                            prioritized_activities.append(activity)
+                        else:
+                            other_activities.append(activity)
+                    
+                    # Final activity list with preferred activities first
+                    final_activities = prioritized_activities + other_activities
+                    
                     activities_with_details = []
                     
-                    for activity in day['activities']:
+                    for i, activity in enumerate(final_activities):
                         # Get Google Maps URL and rating
                         maps_url, rating = get_place_details(activity, location_context)
                         rating_stars = "⭐" * int(rating) + ("½" if rating % 1 >= 0.5 else "")
@@ -1708,12 +2347,27 @@ for day in trip_data:
                             activity_icon = "⛵"
                         elif "flight" in activity_lower or "airport" in activity_lower:
                             activity_icon = "✈️"
+                        elif "eagle" in activity_lower or "wildlife" in activity_lower:
+                            activity_icon = "🦅"
+                        elif "food" in activity_lower or "tasting" in activity_lower:
+                            activity_icon = "🍽️"
+                        elif "art" in activity_lower:
+                            activity_icon = "🎨"
+                        elif "helicopter" in activity_lower:
+                            activity_icon = "🚁"
+                        elif "funicular" in activity_lower:
+                            activity_icon = "🚡"
+                        
+                        # Determine if this activity matches user preferences (for highlighting)
+                        is_match = i < len(prioritized_activities)
+                        match_style = "background: linear-gradient(135deg, #E8F5E8 0%, #F0F8FF 100%); border: 2px solid #4CAF50;" if is_match else ""
+                        match_label = " ⭐ MATCHES YOUR INTERESTS" if is_match and activity not in base_activities else ""
                         
                         # Create HTML with rating and link
                         activity_html = f"""<li>
-                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; padding: 6px; border-radius: 6px;" class="clickable-item activity-item">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; padding: 6px; border-radius: 6px; {match_style}" class="clickable-item activity-item">
                                 <div style="flex: 1; margin-right: 8px;">
-                                    <span class="activity-icon">{activity_icon}</span>{activity}
+                                    <span class="activity-icon">{activity_icon}</span>{activity}{match_label}
                                 </div>
                                 <div style="display: flex; align-items: center; flex-shrink: 0;">
                                     <span style="color: #FFD700; margin-right: 3px; font-size: 0.8rem;">{rating_stars}</span>
@@ -1726,6 +2380,126 @@ for day in trip_data:
                     
                     # Join all activities HTML
                     activities_html = ''.join(activities_with_details)
+                    
+                    # Add personalized recommendations
+                    recommendations = []
+                    location_lower = day["location"].lower()
+                    
+                    # Smart recommendations based on preferences and location
+                    if "Hiking" in user_activities and any(keyword in location_lower for keyword in ["mountain", "hike", "cliff", "rock"]):
+                        if fitness_level in ["active", "very_active"]:
+                            recommendations.append("🥾 Perfect for challenging hikes - matches your fitness level!")
+                        elif fitness_level == "moderate":
+                            recommendations.append("🚶‍♂️ Consider easier hiking trails based on your fitness preference")
+                        else:  # light
+                            recommendations.append("⚠️ This location has challenging hikes - consider scenic drives instead")
+                    
+                    if "Photography" in user_activities and any(keyword in location_lower for keyword in ["view", "scenic", "fjord", "waterfall"]):
+                        recommendations.append("📸 Excellent photography opportunities - bring extra batteries!")
+                        if "sunrise" in ' '.join(day.get('activities', [])).lower():
+                            recommendations.append("🌅 Early morning golden hour shots recommended!")
+                    
+                    if "Beaches" in user_activities and "beach" in location_lower:
+                        recommendations.append("🏖️ Beach day! Perfect for your interests")
+                        if fitness_level in ["active", "very_active"]:
+                            recommendations.append("🏃‍♂️ Great for beach running and water sports!")
+                    
+                    if "Wildlife Viewing" in user_activities:
+                        if any(keyword in location_lower for keyword in ["safari", "eagle", "wildlife"]):
+                            recommendations.append("🦅 Exceptional wildlife viewing opportunities - bring binoculars!")
+                        elif "lofoten" in location_lower:
+                            recommendations.append("🐋 Watch for whales and sea birds in these waters!")
+                        elif "fjord" in location_lower:
+                            recommendations.append("🦭 Seals and porpoises often spotted in fjords!")
+                    
+                    if "Scenic Drives" in user_activities and any(keyword in location_lower for keyword in ["drive", "scenic", "route"]):
+                        recommendations.append("🚗 Perfect scenic driving day - plan for photo stops!")
+                        if fitness_level == "light":
+                            recommendations.append("🚗 Great option for enjoying Norway's beauty at your own pace")
+                    
+                    if "Museums" in user_activities and any(keyword in location_lower for keyword in ["museum", "gallery", "cultural"]):
+                        recommendations.append("🏛️ Cultural exploration matches your interests perfectly!")
+                    
+                    if "Adventure Sports" in user_activities:
+                        if any(keyword in location_lower for keyword in ["canyon", "climb", "extreme"]):
+                            if fitness_level in ["active", "very_active"]:
+                                recommendations.append("🧗‍♂️ Adventure sports available - perfect for your fitness level!")
+                            else:
+                                recommendations.append("⚠️ Adventure sports here require high fitness - consider alternatives")
+                    
+                    if "Food Tours" in user_activities and any(keyword in location_lower for keyword in ["restaurant", "market", "food"]):
+                        dietary = st.session_state.preferences.get('dietary_restrictions', [])
+                        if dietary and "None" not in dietary:
+                            recommendations.append(f"🍽️ Great food scene! Remember your dietary needs: {', '.join(dietary)}")
+                        else:
+                            recommendations.append("🍽️ Excellent culinary experiences await!")
+                    
+                    # Fitness-specific recommendations for specific challenging days
+                    if day["date"] in ["2025-08-14 (Thursday)", "2025-08-15 (Friday)"]:  # Kjerag and Pulpit Rock
+                        if fitness_level == "very_active":
+                            recommendations.append("💪 These challenging hikes are perfect for your fitness level!")
+                        elif fitness_level == "active":
+                            recommendations.append("🥾 Challenging but doable hikes - take your time!")
+                        elif fitness_level == "moderate":
+                            recommendations.append("⚠️ Very challenging hikes - consider shorter alternatives or guided tours")
+                        else:  # light
+                            recommendations.append("🚗 Consider scenic drives to viewpoints instead of hiking")
+                    
+                    # Location-specific activity matching
+                    if "henningsvær" in location_lower and "Museums" in user_activities:
+                        recommendations.append("🎨 Art galleries in Henningsvær are world-class!")
+                    
+                    if "bergen" in location_lower and "Food Tours" in user_activities:
+                        recommendations.append("🐟 Bergen's fish market is a food lover's paradise!")
+                    
+                    # Weather-based recommendations for active users
+                    if fitness_level in ["active", "very_active"] and any(keyword in location_lower for keyword in ["outdoor", "hike", "beach"]):
+                        recommendations.append("☀️ Check weather for optimal outdoor activity timing")
+                    
+                    # Budget-based recommendations
+                    budget = st.session_state.preferences.get('budget_level', 'medium')
+                    if budget == "budget":
+                        recommendations.append("💰 Look for free activities and local markets for affordable meals")
+                        if "Photography" in user_activities:
+                            recommendations.append("📸 Free photography spots - no entrance fees needed!")
+                    elif budget == "luxury":
+                        recommendations.append("✨ Consider premium experiences and fine dining options")
+                        if "Food Tours" in user_activities:
+                            recommendations.append("🍾 Don't miss Michelin-recommended restaurants!")
+                    elif budget == "premium":
+                        if "Adventure Sports" in user_activities:
+                            recommendations.append("🎿 Consider guided adventure tours for safety and expertise")
+                    
+                    # Display personalized recommendations header
+                    if recommendations:
+                        st.markdown(
+                            f"""<div style="background: linear-gradient(135deg, #E8F5E8 0%, #F0F8FF 100%); 
+                                border: 2px solid #4CAF50; padding: 15px; margin: 15px 0; border-radius: 8px;
+                                box-shadow: 0 4px 12px rgba(76, 175, 80, 0.2);">
+                                <h5 style="margin: 0 0 10px 0; color: #2E7D32;">🎯 Personalized Activity Tips for You</h5>
+                                <div style="font-size: 0.95rem;">
+                                    {'<br>'.join(['• ' + rec for rec in recommendations])}
+                                </div>
+                                <div style="margin-top: 10px; font-size: 0.85rem; color: #1B5E20; font-style: italic;">
+                                    ✨ Activities marked with ⭐ match your interests!
+                                </div>
+                            </div>""",
+                            unsafe_allow_html=True
+                        )
+                    
+                    # Show activity personalization summary
+                    added_activities = [act for act in final_activities if act not in base_activities]
+                    if added_activities:
+                        st.markdown(
+                            f"""<div style="background: linear-gradient(135deg, #E3F2FD 0%, #F3E5F5 100%); 
+                                border: 1px solid #2196F3; padding: 10px; margin: 10px 0; border-radius: 6px;">
+                                <div style="font-size: 0.9rem; color: #1976D2;">
+                                    <strong>✨ {len(added_activities)} activities added based on your preferences:</strong><br>
+                                    {', '.join(added_activities)}
+                                </div>
+                            </div>""",
+                            unsafe_allow_html=True
+                        )
                     
                     st.markdown(
                         f"""<div class="content-card">
@@ -1740,11 +2514,122 @@ for day in trip_data:
             # Display dining options
             if has_dining:
                 with dining_col if dining_col else st.container():
+                    # Get user preferences to customize dining display
+                    dietary_restrictions = st.session_state.preferences.get('dietary_restrictions', [])
+                    budget_level = st.session_state.preferences.get('budget_level', 'medium')
+                    food_interests = "Food Tours" in st.session_state.preferences.get('preferred_activities', [])
+                    
                     # Get place information with ratings for dining options
                     location_context = day["location"].split('→')[0].strip() if '→' in day["location"] else day["location"]
+                    location_lower = day["location"].lower()
+                    
+                    # Start with base dining options
+                    customized_dining = day['dining_options'].copy()
+                    
+                    # Add personalized dining options based on preferences
+                    if budget_level == "budget":
+                        if "grocery shopping" not in [d.lower() for d in customized_dining]:
+                            customized_dining.append("🛒 Local grocery stores")
+                        if "market" not in location_lower and "market food stalls" not in [d.lower() for d in customized_dining]:
+                            customized_dining.append("🏪 Market food stalls")
+                    elif budget_level == "luxury":
+                        if "bergen" in location_lower and "michelin" not in " ".join(customized_dining).lower():
+                            customized_dining.append("⭐ Michelin-starred dining")
+                        elif "stavanger" in location_lower and "fine dining" not in " ".join(customized_dining).lower():
+                            customized_dining.append("🍾 Fine dining restaurants")
+                        if "private chef" not in " ".join(customized_dining).lower():
+                            customized_dining.append("👨‍🍳 Private chef experience")
+                    elif budget_level == "premium":
+                        if "tasting menu" not in " ".join(customized_dining).lower():
+                            customized_dining.append("🍷 Tasting menu restaurants")
+                    
+                    # Add dietary-specific options
+                    if "Vegetarian" in dietary_restrictions:
+                        if "vegetarian" not in " ".join(customized_dining).lower():
+                            customized_dining.append("🥗 Vegetarian-friendly restaurants")
+                        if "bergen" in location_lower:
+                            customized_dining.append("🌿 Bergen vegetarian cafes")
+                    
+                    if "Vegan" in dietary_restrictions:
+                        if "vegan" not in " ".join(customized_dining).lower():
+                            customized_dining.append("🌱 Vegan restaurants")
+                        if budget_level == "budget":
+                            customized_dining.append("🥬 Health food stores")
+                    
+                    if "Gluten-free" in dietary_restrictions:
+                        if "gluten" not in " ".join(customized_dining).lower():
+                            customized_dining.append("🌾 Gluten-free bakeries")
+                        if budget_level != "budget":
+                            customized_dining.append("🍞 Certified gluten-free restaurants")
+                    
+                    if "Seafood allergy" in dietary_restrictions:
+                        # Emphasize non-seafood options
+                        if "meat restaurant" not in " ".join(customized_dining).lower():
+                            customized_dining.append("🥩 Traditional meat restaurants")
+                        if "pizza" not in " ".join(customized_dining).lower():
+                            customized_dining.append("🍕 Pizza places (safe from seafood)")
+                    
+                    # Add food tour specific options
+                    if food_interests:
+                        if "bergen" in location_lower and "food tour" not in " ".join(customized_dining).lower():
+                            customized_dining.append("🍽️ Guided food tours")
+                        if "market" in location_lower and "food sampling" not in " ".join(customized_dining).lower():
+                            customized_dining.append("🥘 Market food sampling")
+                        if "cooking class" not in " ".join(customized_dining).lower():
+                            customized_dining.append("👩‍🍳 Norwegian cooking classes")
+                    
+                    # Location-specific additions
+                    if "lofoten" in location_lower:
+                        if any(restriction in dietary_restrictions for restriction in ["Seafood allergy"]):
+                            customized_dining.append("🥔 Local potato dishes (safe option)")
+                        elif budget_level == "luxury":
+                            customized_dining.append("🦞 Premium seafood experiences")
+                    
+                    if "bergen" in location_lower:
+                        if budget_level == "budget" and "street food" not in " ".join(customized_dining).lower():
+                            customized_dining.append("🌭 Bergen street food")
+                        elif budget_level == "luxury":
+                            customized_dining.append("🍸 Rooftop dining with fjord views")
+                    
+                    # Sort dining options by relevance to user preferences
+                    prioritized_dining = []
+                    other_dining = []
+                    
+                    base_count = len(day['dining_options'])
+                    
+                    for i, dining in enumerate(customized_dining):
+                        dining_lower = dining.lower()
+                        is_personalized = i >= base_count
+                        is_dietary_match = False
+                        is_budget_match = False
+                        
+                        # Check dietary matches
+                        if "None" not in dietary_restrictions and dietary_restrictions:
+                            if ("Vegetarian" in dietary_restrictions and any(keyword in dining_lower for keyword in ["vegetarian", "vegan", "plant"])) or \
+                               ("Vegan" in dietary_restrictions and "vegan" in dining_lower) or \
+                               ("Gluten-free" in dietary_restrictions and "gluten" in dining_lower) or \
+                               ("Seafood allergy" in dietary_restrictions and any(keyword in dining_lower for keyword in ["meat", "pizza", "potato"])):
+                                is_dietary_match = True
+                        
+                        # Check budget matches
+                        if (budget_level == "budget" and any(keyword in dining_lower for keyword in ["grocery", "market", "street"])) or \
+                           (budget_level == "luxury" and any(keyword in dining_lower for keyword in ["michelin", "fine", "private", "premium"])) or \
+                           (budget_level == "premium" and "tasting" in dining_lower):
+                            is_budget_match = True
+                        
+                        if is_personalized or is_dietary_match or is_budget_match:
+                            prioritized_dining.append((dining, is_personalized, is_dietary_match, is_budget_match))
+                        else:
+                            other_dining.append((dining, False, False, False))
+                    
+                    # Combine prioritized and other dining options
+                    final_dining = prioritized_dining + other_dining
+                    
                     dining_with_details = []
                     
-                    for dining in day['dining_options']:
+                    for dining_info in final_dining:
+                        dining, is_personalized, is_dietary_match, is_budget_match = dining_info
+                        
                         # Get Google Maps URL and rating
                         maps_url, rating = get_place_details(dining, location_context)
                         rating_stars = "⭐" * int(rating) + ("½" if rating % 1 >= 0.5 else "")
@@ -1758,7 +2643,7 @@ for day in trip_data:
                             dining_icon = "🍴"
                         elif "cafe" in dining_lower or "coffee" in dining_lower:
                             dining_icon = "☕"
-                        elif "market" in dining_lower:
+                        elif "market" in dining_lower or "grocery" in dining_lower:
                             dining_icon = "🏪"
                         elif "breakfast" in dining_lower:
                             dining_icon = "🥐"
@@ -1772,12 +2657,42 @@ for day in trip_data:
                             dining_icon = "🍺"
                         elif "flight" in dining_lower or "airport" in dining_lower:
                             dining_icon = "✈️"
+                        elif "vegetarian" in dining_lower or "vegan" in dining_lower:
+                            dining_icon = "🥗"
+                        elif "gluten" in dining_lower:
+                            dining_icon = "🌾"
+                        elif "meat" in dining_lower:
+                            dining_icon = "🥩"
+                        elif "pizza" in dining_lower:
+                            dining_icon = "🍕"
+                        elif "michelin" in dining_lower or "fine" in dining_lower:
+                            dining_icon = "⭐"
+                        elif "cooking" in dining_lower:
+                            dining_icon = "👩‍🍳"
+                        elif "food tour" in dining_lower:
+                            dining_icon = "🍽️"
+                        
+                        # Determine highlighting based on personalization
+                        highlight_style = ""
+                        match_labels = []
+                        
+                        if is_personalized:
+                            highlight_style = "background: linear-gradient(135deg, #E8F5E8 0%, #F0F8FF 100%); border: 2px solid #4CAF50;"
+                            match_labels.append("✨ ADDED FOR YOU")
+                        elif is_dietary_match:
+                            highlight_style = "background: linear-gradient(135deg, #FFF3E0 0%, #E1F5FE 100%); border: 2px solid #FF9800;"
+                            match_labels.append("🍽️ DIETARY MATCH")
+                        elif is_budget_match:
+                            highlight_style = "background: linear-gradient(135deg, #F3E5F5 0%, #E8F5E8 100%); border: 2px solid #9C27B0;"
+                            match_labels.append("💰 BUDGET MATCH")
+                        
+                        match_label_text = " " + " ".join(match_labels) if match_labels else ""
                         
                         # Create HTML with rating and link
                         dining_html = f"""<li>
-                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; padding: 6px; border-radius: 6px;" class="clickable-item dining-item">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; padding: 6px; border-radius: 6px; {highlight_style}" class="clickable-item dining-item">
                                 <div style="flex: 1; margin-right: 8px;">
-                                    <span class="dining-icon">{dining_icon}</span>{dining}
+                                    <span class="dining-icon">{dining_icon}</span>{dining}{match_label_text}
                                 </div>
                                 <div style="display: flex; align-items: center; flex-shrink: 0;">
                                     <span style="color: #FFD700; margin-right: 3px; font-size: 0.8rem;">{rating_stars}</span>
@@ -1791,6 +2706,117 @@ for day in trip_data:
                     # Join all dining HTML
                     dining_html = ''.join(dining_with_details)
                     
+                    # Add personalized dining recommendations
+                    dining_recommendations = []
+                    
+                    # Dietary-specific recommendations
+                    if dietary_restrictions and "None" not in dietary_restrictions:
+                        dining_recommendations.append(f"⚠️ Remember your dietary needs: {', '.join(dietary_restrictions)}")
+                        
+                        # Specific suggestions based on restrictions
+                        if "Vegetarian" in dietary_restrictions:
+                            dining_recommendations.append("🥗 Norway has great vegetarian options - try local root vegetables and fish alternatives")
+                            if "bergen" in location_lower:
+                                dining_recommendations.append("🥕 Bergen fish market has fresh vegetable stalls too!")
+                        if "Vegan" in dietary_restrictions:
+                            dining_recommendations.append("🌱 Look for 'vegansk' on menus - Norwegian cities have growing vegan scenes")
+                            if budget_level == "budget":
+                                dining_recommendations.append("🛒 Grocery stores like Rema 1000 have good vegan options")
+                        if "Gluten-free" in dietary_restrictions:
+                            dining_recommendations.append("🌾 Most restaurants can accommodate gluten-free requests - ask for 'glutenfri'")
+                            if budget_level != "budget":
+                                dining_recommendations.append("🍞 Many upscale restaurants have dedicated gluten-free menus")
+                        if "Seafood allergy" in dietary_restrictions:
+                            dining_recommendations.append("🚫🐟 Be extra careful in coastal areas - inform restaurants about fish/shellfish allergies")
+                            if "lofoten" in location_lower or "bergen" in location_lower:
+                                dining_recommendations.append("⚠️ This is a major fishing area - be especially cautious")
+                        if "Nut allergy" in dietary_restrictions:
+                            dining_recommendations.append("🥜 Norwegian pastries often contain nuts - always ask 'inneholder dette nøtter?'")
+                    
+                    # Budget-specific dining advice with dietary considerations
+                    if budget_level == "budget":
+                        dining_recommendations.append("💰 Try local bakeries, food trucks, and grocery stores for budget-friendly meals")
+                        dining_recommendations.append("🥪 Pack lunches for hiking days to save money")
+                        if "Vegetarian" in dietary_restrictions:
+                            dining_recommendations.append("🥖 Bakeries have great veggie sandwiches at good prices")
+                        if "Gluten-free" in dietary_restrictions:
+                            dining_recommendations.append("🛒 ICA and Coop supermarkets have affordable gluten-free sections")
+                    elif budget_level == "luxury":
+                        dining_recommendations.append("✨ Don't miss Michelin-recommended restaurants and local fine dining")
+                        dining_recommendations.append("🍷 Try premium Norwegian wines and craft cocktails")
+                        if "Vegetarian" in dietary_restrictions:
+                            dining_recommendations.append("🌟 Norway's fine dining scene has incredible vegetarian tasting menus")
+                        if "Gluten-free" in dietary_restrictions:
+                            dining_recommendations.append("👨‍🍳 High-end restaurants excel at gluten-free fine dining")
+                    elif budget_level == "premium":
+                        dining_recommendations.append("🍽️ Mix of quality restaurants and local favorites recommended")
+                        if dietary_restrictions and "None" not in dietary_restrictions:
+                            dining_recommendations.append("📞 Call ahead to premium restaurants - they can accommodate most dietary needs")
+                    
+                    # Location-specific dining advice with personal considerations
+                    location_lower = day["location"].lower()
+                    if "lofoten" in location_lower:
+                        if "Seafood allergy" not in dietary_restrictions:
+                            dining_recommendations.append("🐟 Fresh Arctic seafood is exceptional here - try Arctic char or king crab")
+                        else:
+                            dining_recommendations.append("🥔 Focus on local potatoes and root vegetables - Lofoten specialties!")
+                        if budget_level == "budget":
+                            dining_recommendations.append("🎣 Some places let you buy directly from fishermen")
+                    elif "bergen" in location_lower:
+                        if "Seafood allergy" not in dietary_restrictions:
+                            dining_recommendations.append("🦐 Fish market is a must-visit - try fresh shrimp and salmon")
+                        if "Vegetarian" in dietary_restrictions:
+                            dining_recommendations.append("🥗 Bergen has excellent vegetarian cafes in the old town")
+                        if budget_level == "budget":
+                            dining_recommendations.append("🐟 Fish market has affordable ready-to-eat options")
+                    elif "stavanger" in location_lower:
+                        if "Vegetarian" not in dietary_restrictions:
+                            dining_recommendations.append("🧈 Try traditional Norwegian butter and local cheese specialties")
+                        if budget_level == "luxury":
+                            dining_recommendations.append("⭐ Stavanger has several Michelin-recommended restaurants")
+                    elif "ålesund" in location_lower:
+                        dining_recommendations.append("🦀 Known for king crab and Art Nouveau dining experiences")
+                        if budget_level == "budget":
+                            dining_recommendations.append("🥘 Local fish soup is affordable and filling")
+                    elif "geiranger" in location_lower:
+                        if budget_level == "budget":
+                            dining_recommendations.append("🥪 Limited dining options - consider packing meals")
+                        dining_recommendations.append("🏔️ Hotel restaurants often have the best food in remote areas")
+                    
+                    # Combine dietary + budget + location for specific recommendations
+                    if budget_level == "budget" and "Vegetarian" in dietary_restrictions and "lofoten" in location_lower:
+                        dining_recommendations.append("🌿 Stock up on vegetables in larger towns before heading to remote areas")
+                    
+                    # Show dining personalization summary
+                    added_dining = [dining for dining, _, _, _ in final_dining if dining not in day['dining_options']]
+                    if added_dining:
+                        st.markdown(
+                            f"""<div style="background: linear-gradient(135deg, #FFF3E0 0%, #F3E5F5 100%); 
+                                border: 1px solid #FF9800; padding: 10px; margin: 10px 0; border-radius: 6px;">
+                                <div style="font-size: 0.9rem; color: #E65100;">
+                                    <strong>✨ {len(added_dining)} dining options added for your preferences:</strong><br>
+                                    {', '.join(added_dining)}
+                                </div>
+                            </div>""",
+                            unsafe_allow_html=True
+                        )
+                    
+                    if dining_recommendations:
+                        st.markdown(
+                            f"""<div style="background: linear-gradient(135deg, #FFF3E0 0%, #F3E5F5 100%); 
+                                border: 2px solid #FF9800; padding: 15px; margin: 15px 0; border-radius: 8px;
+                                box-shadow: 0 4px 12px rgba(255, 152, 0, 0.2);">
+                                <h5 style="margin: 0 0 10px 0; color: #E65100;">🍴 Personalized Dining Tips for You</h5>
+                                <div style="font-size: 0.95rem;">
+                                    {'<br>'.join(['• ' + rec for rec in dining_recommendations])}
+                                </div>
+                                <div style="margin-top: 10px; font-size: 0.85rem; color: #BF360C; font-style: italic;">
+                                    ✨ Highlighted options match your dietary needs and budget!
+                                </div>
+                            </div>""",
+                            unsafe_allow_html=True
+                        )
+                    
                     st.markdown(
                         f"""<div class="content-card">
                             <h4>🍽️ Dining Options</h4>
@@ -1801,134 +2827,364 @@ for day in trip_data:
                         unsafe_allow_html=True
                     )
                 
+        # Create an enhanced interactive exploration section
+        st.markdown('<h3 class="section-header">🌍 Explore & Discover</h3>', unsafe_allow_html=True)
         
-        # Create a section for images and location links side by side
-        st.markdown('<h3 class="section-header">📸 Images & Locations</h3>', unsafe_allow_html=True)
+        # Get user preferences for customization
+        user_activities = st.session_state.preferences.get('preferred_activities', [])
+        fitness_level = st.session_state.preferences.get('fitness_level', 'moderate')
         
-        # Create a two-column layout for images and location links
-        image_col, link_col = st.columns([3, 1])  # 3:1 ratio to give more space to images
+        # Create tabs for different exploration modes
+        img_tab, map_tab, plan_tab = st.tabs(["📸 Visual Preview", "🗺️ Interactive Locations", "📝 Planning Tools"])
         
-        with image_col:
+        with img_tab:
             if day["images"]:
-                # Define captions based on the day's activities
-                captions = {
-                    "2025-08-02 (Saturday)": ["Sunset view from airplane approaching Norway"],
-                    "2025-08-03 (Sunday)": ["Scenic coastal road in Lofoten Islands", "Mountain views along E10 to Lofoten"],
-                    "2025-08-04 (Monday)": ["Haukland Beach with turquoise waters in summer", "Uttakleiv Beach and its iconic boulders", "Panoramic view from Offersøykammen hike"],
-                    "2025-08-05 (Tuesday)": ["Viewpoint over Lofoten's dramatic mountains", "Red rorbuer fishing cabins in Hamnøy", "Scenic Ramberg Beach with mountain backdrop"],
-                    "2025-08-06 (Wednesday)": ["Traditional fishing village of Nusfjord in summer", "Sea eagle safari views in Lofoten"],
-                    "2025-08-07 (Thursday)": ["Henningsvær harbor village with mountains", "View from Fløya hiking trail in summer"],
-                    "2025-08-08 (Friday)": ["Bergen's colorful Bryggen Wharf in summer", "Bergen harbor with boats in summer sunshine"],
-                    "2025-08-09 (Saturday)": ["Bryggen Wharf historic buildings in summer", "View from Mount Fløyen over Bergen", "Bergen fish market in summer"],
-                    "2025-08-10 (Sunday)": ["Summer view of Geirangerfjord UNESCO site", "Flydalsjuvet viewpoint over Geirangerfjord"],
-                    "2025-08-11 (Monday)": ["Seven Sisters waterfall in Geirangerfjord", "Cruise boat in summer on Geirangerfjord"],
-                    "2025-08-12 (Tuesday)": ["Canyoning adventure in Geirangerfjord", "Ålesund city view with art nouveau architecture"],
-                    "2025-08-13 (Wednesday)": ["Colorful wooden houses in Stavanger Old Town", "Stavanger harbor in summer sunshine"],
-                    "2025-08-14 (Thursday)": ["Kjeragbolten boulder wedged between cliffs", "Summer hiking trail to Kjerag"],
-                    "2025-08-15 (Friday)": ["Pulpit Rock (Preikestolen) in summer", "View of Lysefjord from Pulpit Rock in August"],
-                    "2025-08-16 (Saturday)": ["Final view of Norwegian fjords and mountains"]
+                # Enhanced image gallery with activity-based filtering
+                st.markdown("### Choose Your View:")
+                
+                # Add view filters based on user interests
+                view_options = ["All Photos"]
+                if "Photography" in user_activities:
+                    view_options.extend(["Best Photo Spots", "Golden Hour Views"])
+                if "Hiking" in user_activities:
+                    view_options.extend(["Trail Views", "Summit Panoramas"])
+                if "Scenic Drives" in user_activities:
+                    view_options.append("Road Trip Views")
+                if "Beaches" in user_activities and any(keyword in day["location"].lower() for keyword in ["beach", "coast", "lofoten"]):
+                    view_options.append("Coastal Scenes")
+                
+                selected_view = st.selectbox("Filter photos by:", view_options, key=f"view_{day['date']}")
+                
+                # Define captions and tags for better filtering
+                enhanced_captions = {
+                    "2025-08-02 (Saturday)": [
+                        {"caption": "Sunset view from airplane approaching Norway", "tags": ["scenic", "golden_hour"], "activity": "Scenic Drives"}
+                    ],
+                    "2025-08-03 (Sunday)": [
+                        {"caption": "Scenic coastal road in Lofoten Islands", "tags": ["road", "scenic"], "activity": "Scenic Drives"},
+                        {"caption": "Mountain views along E10 to Lofoten", "tags": ["mountain", "road"], "activity": "Scenic Drives"}
+                    ],
+                    "2025-08-04 (Monday)": [
+                        {"caption": "Haukland Beach with turquoise waters in summer", "tags": ["beach", "coast", "golden_hour"], "activity": "Beaches"},
+                        {"caption": "Uttakleiv Beach and its iconic boulders", "tags": ["beach", "coast", "photo_spot"], "activity": "Photography"},
+                        {"caption": "Panoramic view from Offersøykammen hike", "tags": ["hiking", "summit", "panorama"], "activity": "Hiking"}
+                    ],
+                    "2025-08-05 (Tuesday)": [
+                        {"caption": "Viewpoint over Lofoten's dramatic mountains", "tags": ["hiking", "summit", "panorama"], "activity": "Hiking"},
+                        {"caption": "Red rorbuer fishing cabins in Hamnøy", "tags": ["photo_spot", "village"], "activity": "Photography"},
+                        {"caption": "Scenic Ramberg Beach with mountain backdrop", "tags": ["beach", "coast", "photo_spot"], "activity": "Beaches"}
+                    ],
+                    "2025-08-06 (Wednesday)": [
+                        {"caption": "Traditional fishing village of Nusfjord in summer", "tags": ["village", "photo_spot"], "activity": "Photography"},
+                        {"caption": "Sea eagle safari views in Lofoten", "tags": ["wildlife", "scenic"], "activity": "Wildlife Viewing"}
+                    ],
+                    "2025-08-07 (Thursday)": [
+                        {"caption": "Henningsvær harbor village with mountains", "tags": ["village", "photo_spot"], "activity": "Photography"},
+                        {"caption": "View from Fløya hiking trail in summer", "tags": ["hiking", "summit", "panorama"], "activity": "Hiking"}
+                    ],
+                    "2025-08-08 (Friday)": [
+                        {"caption": "Bergen's colorful Bryggen Wharf in summer", "tags": ["photo_spot", "historic"], "activity": "Photography"},
+                        {"caption": "Bergen harbor with boats in summer sunshine", "tags": ["scenic", "golden_hour"], "activity": "Scenic Drives"}
+                    ],
+                    "2025-08-09 (Saturday)": [
+                        {"caption": "Bryggen Wharf historic buildings in summer", "tags": ["historic", "photo_spot"], "activity": "Photography"},
+                        {"caption": "View from Mount Fløyen over Bergen", "tags": ["hiking", "summit", "panorama"], "activity": "Hiking"},
+                        {"caption": "Bergen fish market in summer", "tags": ["food", "market"], "activity": "Food Tours"}
+                    ],
+                    "2025-08-10 (Sunday)": [
+                        {"caption": "Summer view of Geirangerfjord UNESCO site", "tags": ["scenic", "photo_spot"], "activity": "Photography"},
+                        {"caption": "Flydalsjuvet viewpoint over Geirangerfjord", "tags": ["hiking", "summit", "panorama"], "activity": "Hiking"}
+                    ],
+                    "2025-08-11 (Monday)": [
+                        {"caption": "Seven Sisters waterfall in Geirangerfjord", "tags": ["scenic", "photo_spot"], "activity": "Photography"},
+                        {"caption": "Cruise boat in summer on Geirangerfjord", "tags": ["scenic", "boat"], "activity": "Scenic Drives"}
+                    ],
+                    "2025-08-12 (Tuesday)": [
+                        {"caption": "Canyoning adventure in Geirangerfjord", "tags": ["adventure", "extreme"], "activity": "Adventure Sports"},
+                        {"caption": "Ålesund city view with art nouveau architecture", "tags": ["photo_spot", "historic"], "activity": "Photography"}
+                    ],
+                    "2025-08-13 (Wednesday)": [
+                        {"caption": "Colorful wooden houses in Stavanger Old Town", "tags": ["photo_spot", "historic"], "activity": "Photography"},
+                        {"caption": "Stavanger harbor in summer sunshine", "tags": ["scenic", "golden_hour"], "activity": "Scenic Drives"}
+                    ],
+                    "2025-08-14 (Thursday)": [
+                        {"caption": "Kjeragbolten boulder wedged between cliffs", "tags": ["hiking", "extreme", "photo_spot"], "activity": "Adventure Sports"},
+                        {"caption": "Summer hiking trail to Kjerag", "tags": ["hiking", "trail"], "activity": "Hiking"}
+                    ],
+                    "2025-08-15 (Friday)": [
+                        {"caption": "Pulpit Rock (Preikestolen) in summer", "tags": ["hiking", "summit", "photo_spot"], "activity": "Hiking"},
+                        {"caption": "View of Lysefjord from Pulpit Rock in August", "tags": ["hiking", "summit", "panorama"], "activity": "Hiking"}
+                    ],
+                    "2025-08-16 (Saturday)": [
+                        {"caption": "Final view of Norwegian fjords and mountains", "tags": ["scenic", "panorama"], "activity": "Scenic Drives"}
+                    ]
                 }
                 
-                # Get captions for this day
-                day_captions = captions.get(day["date"], [])
+                # Filter images based on selected view and user preferences
+                day_image_data = enhanced_captions.get(day["date"], [])
+                filtered_images = []
                 
-                # Use default captions if none are defined for this day
-                if not day_captions or len(day_captions) < len(day["images"]):
-                    day_captions = [f"Norway Scene {i+1}" for i in range(len(day["images"]))]
+                for i, img_data in enumerate(day_image_data):
+                    if i >= len(day["images"]):
+                        break
+                        
+                    include_image = False
+                    
+                    if selected_view == "All Photos":
+                        include_image = True
+                    elif selected_view == "Best Photo Spots" and "photo_spot" in img_data.get("tags", []):
+                        include_image = True
+                    elif selected_view == "Golden Hour Views" and "golden_hour" in img_data.get("tags", []):
+                        include_image = True
+                    elif selected_view == "Trail Views" and "hiking" in img_data.get("tags", []):
+                        include_image = True
+                    elif selected_view == "Summit Panoramas" and "summit" in img_data.get("tags", []):
+                        include_image = True
+                    elif selected_view == "Road Trip Views" and "road" in img_data.get("tags", []):
+                        include_image = True
+                    elif selected_view == "Coastal Scenes" and any(tag in img_data.get("tags", []) for tag in ["beach", "coast"]):
+                        include_image = True
+                    
+                    if include_image:
+                        filtered_images.append((day["images"][i], img_data))
                 
-                # Use a consistent layout for better image sizing
-                num_images = len(day["images"])
-                if num_images > 3:
-                    # Use 3 columns for 4+ images
-                    cols = st.columns([1, 1, 1])
-                elif num_images > 1:
-                    # Use 2 columns for 2-3 images
-                    cols = st.columns([1, 1])
+                # If no filtered images, show all
+                if not filtered_images:
+                    filtered_images = [(day["images"][i], day_image_data[i] if i < len(day_image_data) else {"caption": f"Norway Scene {i+1}", "tags": [], "activity": ""}) for i in range(len(day["images"]))]
+                
+                # Display filtered images with enhanced layout
+                if len(filtered_images) == 1:
+                    # Single image - large display with detailed info
+                    img_path, img_data = filtered_images[0]
+                    
+                    col1, col2 = st.columns([2, 1])
+                    with col1:
+                        high_res_path = img_path.replace("Norway_gallery/", "Norway_gallery/original_backup/")
+                        actual_path = high_res_path if os.path.exists(high_res_path) else img_path
+                        high_quality_img = load_high_quality_image(actual_path)
+                        
+                        st.markdown('<div class="image-container large-image high-quality-image">', unsafe_allow_html=True)
+                        st.image(high_quality_img, caption=img_data["caption"], width=600, output_format="PNG")
+                        st.markdown('</div>', unsafe_allow_html=True)
+                    
+                    with col2:
+                        st.markdown("### 📋 Photo Details")
+                        st.write(f"**Best for:** {img_data.get('activity', 'General viewing')}")
+                        
+                        if img_data.get('tags'):
+                            st.write(f"**Tags:** {', '.join(img_data['tags'])}")
+                        
+                        # Add personalized photo tips
+                        if "Photography" in user_activities:
+                            if "golden_hour" in img_data.get("tags", []):
+                                st.success("📸 Perfect for golden hour photography!")
+                            if "photo_spot" in img_data.get("tags", []):
+                                st.info("📷 This is a popular photography location")
+                        
+                        if "Hiking" in user_activities and "hiking" in img_data.get("tags", []):
+                            if fitness_level in ["active", "very_active"]:
+                                st.success("🥾 Great hiking destination for your fitness level!")
+                            elif fitness_level == "light":
+                                st.warning("⚠️ This may require moderate hiking")
+                        
+                        # Add practical info
+                        st.markdown("### 💡 Planning Tips")
+                        if "beach" in img_data.get("tags", []):
+                            st.write("• Best visited during midday for warmest weather")
+                            st.write("• Bring layers - coastal weather changes quickly")
+                        elif "summit" in img_data.get("tags", []):
+                            st.write("• Start early to avoid crowds")
+                            st.write("• Check weather conditions before hiking")
+                        elif "village" in img_data.get("tags", []):
+                            st.write("• Great for morning or evening exploration")
+                            st.write("• Many shops and cafes available")
+                
                 else:
-                    # For single images, use a full-width column
-                    cols = st.columns([1])  # Full-width for better image display
-                
-                for i, img_path in enumerate(day["images"]):
-                    caption = day_captions[i] if i < len(day_captions) else f"Norway Scene {i+1}"
-                    
-                    # For multi-column layout, distribute across columns
-                    if num_images > 1:
-                        col_idx = i % len(cols)
+                    # Multiple images - responsive grid
+                    num_images = len(filtered_images)
+                    if num_images > 3:
+                        cols = st.columns([1, 1, 1])
+                    elif num_images > 1:
+                        cols = st.columns([1, 1])
                     else:
-                        # For single image, always use the center column
-                        col_idx = 0
+                        cols = st.columns([1])
                     
-                    # Check if there's a high-resolution version in original_backup folder
-                    high_res_path = img_path.replace("Norway_gallery/", "Norway_gallery/original_backup/")
-                    actual_path = high_res_path if os.path.exists(high_res_path) else img_path
-                    
-                    # Load image with highest possible quality
-                    high_quality_img = load_high_quality_image(actual_path)
-                    
-                    try:
+                    for i, (img_path, img_data) in enumerate(filtered_images):
+                        col_idx = i % len(cols)
+                        
+                        high_res_path = img_path.replace("Norway_gallery/", "Norway_gallery/original_backup/")
+                        actual_path = high_res_path if os.path.exists(high_res_path) else img_path
+                        high_quality_img = load_high_quality_image(actual_path)
+                        
                         with cols[col_idx]:
-                            st.markdown('<div class="image-container large-image high-quality-image">', unsafe_allow_html=True)
-                            # For single images, use explicit width for higher quality display
-                            if num_images == 1:
-                                # Use a larger fixed width for single images
-                                st.image(high_quality_img, caption=caption, width=600, output_format="PNG")
-                            else:
-                                # For multiple images, use appropriate width for better quality
-                                st.image(high_quality_img, caption=caption, width=300, output_format="PNG")
+                            st.markdown('<div class="image-container high-quality-image">', unsafe_allow_html=True)
+                            st.image(high_quality_img, caption=img_data["caption"], width=300, output_format="PNG")
+                            
+                            # Add quick activity match indicators
+                            if img_data.get("activity") in user_activities:
+                                st.markdown("⭐ *Matches your interests!*")
+                            
                             st.markdown('</div>', unsafe_allow_html=True)
-                    except Exception as e:
-                        st.error(f"Could not load image: {img_path}")
-                        st.error(f"Error: {e}")
-            else:
-                # Display a more friendly message when no images are available
-                st.markdown(
-                    """<div class="content-card">
-                        <h4>📸 No Photos Available</h4>
-                        <div class="card-content" style="text-align:center;">
-                            <p>No photos available for this day yet.</p>
-                            <p>Check the location links for this destination.</p>
-                        </div>
-                    </div>""", 
-                    unsafe_allow_html=True
-                )
-        
-        # Show Google Maps links in the right column
-        with link_col:
-            if day["date"] in norway_locations:
-                st.markdown(
-                    """<div style="background-color: #f9f9f9; border-radius: 8px; padding: 10px;">
-                        <h4 style="margin-top: 0;">📍 Locations</h4>
-                    """, 
-                    unsafe_allow_html=True
-                )
                 
-                # Extract location names from links
-                location_names = []
-                for link in norway_locations[day["date"]]:
-                    # Extract location name from Google Maps URL
+                # Add personalized viewing suggestions
+                if user_activities:
+                    matching_activities = set()
+                    for img_data in day_image_data:
+                        if img_data.get("activity") in user_activities:
+                            matching_activities.add(img_data.get("activity"))
+                    
+                    if matching_activities:
+                        st.success(f"📸 This location has great photo opportunities for: {', '.join(matching_activities)}")
+            
+            else:
+                st.info("📸 No photos available for this day yet. Check back later or explore the locations!")
+        
+        with map_tab:
+            # Enhanced interactive location explorer
+            st.markdown("### 🎯 Interactive Location Guide")
+            
+            if day["date"] in norway_locations:
+                # Create enhanced location cards with detailed information
+                for i, link in enumerate(norway_locations[day["date"]]):
+                    # Extract and clean location name
                     match = re.search(r'place/([^/@]+)', link)
                     if match:
-                        # Clean up the name (replace + with space, etc)
-                        name = match.group(1).replace('+', ' ').replace('_', ' ')
-                        name = re.sub(r'@[\d\.]+,[\d\.]+', '', name)  # Remove coordinates
-                        name = name.replace('/', ' - ')  # Replace slashes
-                        name = ' '.join(word.capitalize() for word in name.split())  # Capitalize words
+                        raw_name = match.group(1).replace('+', ' ').replace('_', ' ')
+                        raw_name = re.sub(r'@[\d\.]+,[\d\.]+', '', raw_name)
+                        name = ' '.join(word.capitalize() for word in raw_name.split())
                     else:
                         name = f"Location {i+1}"
-                    location_names.append(name)
-                
-                # Create a vertical list of location links
-                for i, (link, name) in enumerate(zip(norway_locations[day["date"]], location_names)):
-                    st.markdown(f"""<a href='{link}' target='_blank' class="location-link">
-                        <div class="location-link-box">
-                            <div class="location-link-number">{i+1}</div>
-                            <div class="location-link-name">{name}</div>
-                            <div style="margin-left: auto; color: #4285F4; opacity: 0.7;">
-                                <span style="font-size: 16px;">🔗</span>
-                            </div>
-                        </div>
-                    </a>""", unsafe_allow_html=True)
-                
-                st.markdown('</div>', unsafe_allow_html=True)
+                    
+                    # Create enhanced location card
+                    with st.container():
+                        col1, col2, col3 = st.columns([1, 3, 1])
+                        
+                        with col1:
+                            st.markdown(f"""
+                                <div style="background: linear-gradient(135deg, #4285F4, #34A853); 
+                                           color: white; width: 50px; height: 50px; border-radius: 50%; 
+                                           display: flex; align-items: center; justify-content: center; 
+                                           font-weight: bold; font-size: 1.2rem; margin: auto;">
+                                    {i+1}
+                                </div>
+                            """, unsafe_allow_html=True)
+                        
+                        with col2:
+                            st.markdown(f"### 📍 {name}")
+                            
+                            # Add location-specific information based on user preferences
+                            location_info = []
+                            name_lower = name.lower()
+                            
+                            # Add activity-specific information
+                            if "Hiking" in user_activities:
+                                if any(keyword in name_lower for keyword in ["mountain", "rock", "cliff", "trail"]):
+                                    if fitness_level in ["active", "very_active"]:
+                                        location_info.append("🥾 Excellent hiking - matches your fitness level!")
+                                    elif fitness_level == "moderate":
+                                        location_info.append("🚶‍♂️ Moderate hiking available - take your time")
+                                    else:
+                                        location_info.append("⚠️ Challenging terrain - consider viewpoints instead")
+                            
+                            if "Photography" in user_activities:
+                                if any(keyword in name_lower for keyword in ["fjord", "view", "falls", "bridge"]):
+                                    location_info.append("📸 Outstanding photography opportunities!")
+                                if "sunset" in name_lower or "sunrise" in name_lower:
+                                    location_info.append("🌅 Perfect for golden hour photography")
+                            
+                            if "Food Tours" in user_activities:
+                                if "market" in name_lower:
+                                    location_info.append("🍽️ Great food exploration opportunities!")
+                                elif "town" in name_lower or "city" in name_lower:
+                                    location_info.append("🍴 Local dining scene worth exploring")
+                            
+                            if "Wildlife Viewing" in user_activities:
+                                if any(keyword in name_lower for keyword in ["safari", "nature", "coast"]):
+                                    location_info.append("🦅 Wildlife spotting opportunities!")
+                            
+                            # Add practical information
+                            if "airport" in name_lower:
+                                location_info.append("✈️ Transportation hub")
+                            elif "beach" in name_lower:
+                                location_info.append("🏖️ Coastal location - check weather")
+                            elif "museum" in name_lower:
+                                location_info.append("🏛️ Cultural attraction")
+                            
+                            # Display personalized information
+                            if location_info:
+                                for info in location_info:
+                                    st.write(f"• {info}")
+                            else:
+                                st.write("📍 Scenic Norwegian destination")
+                            
+                            # Add estimated time and difficulty
+                            if any(keyword in name_lower for keyword in ["rock", "mountain", "cliff"]):
+                                if fitness_level == "very_active":
+                                    st.write("⏱️ **Estimated time:** 4-6 hours")
+                                    st.write("💪 **Difficulty:** Perfect for you!")
+                                elif fitness_level == "active":
+                                    st.write("⏱️ **Estimated time:** 5-7 hours")
+                                    st.write("💪 **Difficulty:** Challenging but doable")
+                                else:
+                                    st.write("⏱️ **Estimated time:** Consider alternatives")
+                                    st.write("💪 **Difficulty:** Very challenging")
+                            elif "museum" in name_lower or "market" in name_lower:
+                                st.write("⏱️ **Estimated time:** 1-3 hours")
+                                st.write("💪 **Difficulty:** Easy walking")
+                        
+                        with col3:
+                            st.markdown(f"""
+                                <a href='{link}' target='_blank' style="text-decoration: none;">
+                                    <div style="background: #4285F4; color: white; padding: 10px 15px; 
+                                               border-radius: 25px; text-align: center; transition: all 0.3s;
+                                               box-shadow: 0 2px 10px rgba(66, 133, 244, 0.3);">
+                                        🗺️ Open Map
+                                    </div>
+                                </a>
+                            """, unsafe_allow_html=True)
+                        
+                        st.markdown("---")
+            
+            else:
+                st.info("🗺️ No specific locations mapped for this day. Enjoy the journey!")
+        
+        with plan_tab:
+            # Simplified planning tools
+            st.markdown("### 📝 Quick Planning")
+            
+            # Personal notes (simplified)
+            st.markdown("#### 💭 Notes")
+            current_note = st.session_state.personal_notes.get(day["date"], "")
+            updated_note = st.text_area(
+                "Add your thoughts or reminders:",
+                value=current_note,
+                height=80,
+                key=f"notes_{day['date']}_simple",
+                placeholder="Plans, reminders, must-dos..."
+            )
+            if updated_note != current_note:
+                st.session_state.personal_notes[day["date"]] = updated_note
+            
+            # Favorites and completion (simplified)
+            col1, col2 = st.columns(2)
+            
+            with col1:
+                st.markdown("#### ⭐ Favorite")
+                is_favorite = day["location"] in st.session_state.favorite_places
+                if st.button("💖" if not is_favorite else "💔", 
+                           key=f"plan_fav_{day['date']}", use_container_width=True):
+                    if is_favorite:
+                        st.session_state.favorite_places.discard(day["location"])
+                    else:
+                        st.session_state.favorite_places.add(day["location"])
+                    st.rerun()
+            
+            with col2:
+                st.markdown("#### ✅ Completed")
+                is_visited = st.session_state.visited_status.get(day["date"], False)
+                if st.button("✅" if not is_visited else "⏳", 
+                           key=f"plan_visited_{day['date']}", use_container_width=True):
+                    st.session_state.visited_status[day["date"]] = not is_visited
+                    st.rerun()
         
         break
