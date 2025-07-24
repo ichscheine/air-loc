@@ -1486,7 +1486,7 @@ if 'visited_status' not in st.session_state:
 if 'preferences' not in st.session_state:
     st.session_state.preferences = {
         'preferred_activities': ['Hiking'],
-        'dietary_restrictions': [],
+        'dietary_restrictions': ['None'],
         'budget_level': 'medium',
         'fitness_level': 'moderate',
         'weather_preference': 'any'
