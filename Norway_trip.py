@@ -2872,6 +2872,15 @@ for day in trip_data:
                 with img_col:
                     # Fallback: if best_image_idx is out of range for images, use 0
                     img_idx = best_image_idx if best_image_idx < len(day["images"]) else 0
+                    # If multiple images, allow user to select which to view
+                    if len(day["images"]) > 1:
+                        selected_img = st.selectbox(
+                            "",
+                            range(len(day["images"])),
+                            format_func=lambda x: f"View {x+1}",
+                            key=f"img_nav_{day['date']}"
+                        )
+                        img_idx = selected_img
                     if day["images"]:
                         img_path = day["images"][img_idx]
                         # Convert non-ASCII characters in filename to ASCII equivalents for deployment compatibility
@@ -2894,12 +2903,6 @@ for day in trip_data:
                             caption=day_images[img_idx]["caption"] if img_idx < len(day_images) else "Norway Scene",
                             use_container_width=True
                         )
-                        # Compact image gallery navigation
-                        if len(day["images"]) > 1:
-                            selected_img = st.selectbox("", 
-                                                      range(len(day["images"])), 
-                                                      format_func=lambda x: f"View {x+1}",
-                                                      key=f"img_nav_{day['date']}")
                 
                 with info_col:
                     # Integrated section: Key Highlights, Locations, and Planning
