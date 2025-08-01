@@ -2870,16 +2870,30 @@ for day in trip_data:
                 img_col, info_col = st.columns([3, 2])
                 
                 with img_col:
-                    if best_image_idx < len(day["images"]):
-                        img_path = day["images"][best_image_idx]
-                        high_res_path = img_path.replace("Norway_gallery/", "Norway_gallery/original_backup/")
-                        actual_path = high_res_path if os.path.exists(high_res_path) else img_path
+                    # Fallback: if best_image_idx is out of range for images, use 0
+                    img_idx = best_image_idx if best_image_idx < len(day["images"]) else 0
+                    if day["images"]:
+                        img_path = day["images"][img_idx]
+                        # Convert non-ASCII characters in filename to ASCII equivalents for deployment compatibility
+                        import unicodedata
+                        import re
+                        def ascii_filename(path):
+                            # Only convert the filename, not the directory
+                            dir_part, file_part = os.path.split(path)
+                            # Normalize and remove non-ASCII
+                            file_ascii = unicodedata.normalize('NFKD', file_part).encode('ascii', 'ignore').decode('ascii')
+                            # Replace spaces with underscores for extra safety
+                            file_ascii = re.sub(r'\s+', '_', file_ascii)
+                            return os.path.join(dir_part, file_ascii)
+                        img_path_ascii = ascii_filename(img_path)
+                        high_res_path_ascii = ascii_filename(img_path.replace("Norway_gallery/", "Norway_gallery/original_backup/"))
+                        actual_path = high_res_path_ascii if os.path.exists(high_res_path_ascii) else img_path_ascii
                         high_quality_img = load_high_quality_image(actual_path)
-                        
-                        st.image(high_quality_img, 
-                                caption=day_images[best_image_idx]["caption"] if best_image_idx < len(day_images) else "Norway Scene",
-                                use_container_width=True)
-                        
+                        st.image(
+                            high_quality_img,
+                            caption=day_images[img_idx]["caption"] if img_idx < len(day_images) else "Norway Scene",
+                            use_container_width=True
+                        )
                         # Compact image gallery navigation
                         if len(day["images"]) > 1:
                             selected_img = st.selectbox("", 
