@@ -78,7 +78,7 @@ def get_location_coordinates(location_name):
     try:
         # Predefined coordinates for locations
         location_coords = {
-            "Nusfjord?": (68.0352, 13.3491),
+            "Håen Parkering": (68.0482, 13.3752),
             "Kjerag Hike": (59.0350, 6.5875),
             "Pulpit Rock": (58.9861, 6.1899),
             "Henningsvær + Fløya": (68.1484, 14.2015),
@@ -526,15 +526,15 @@ Drive ~3 hours to Vågan in Lofoten.
     },
     {
         "date": "2025-08-06 (Wednesday)",
-        "location": "Nusfjord?",
-        "details": """Visit traditional fishing village Nusfjord.
+        "location": "Håen Parkering",
+        "details": """Parking spot for Håen hike. 
 
 **Other ideas:**  
-- Lofoten Museum  
-- Sea eagle safari
+- Håen hike  
+- Scenic viewpoints
 """,
-        "activities": ["Exploring Nusfjord village", "Sea eagle safari", "Museum visit", "Cod liver oil factory tour"],
-        "dining_options": ["Karoline Restaurant in Nusfjord", "Local seafood at Nusfjord Rorbuer", "Traditional stockfish meal"],
+        "activities": ["Håen hike", "Scenic viewpoints", "Photography"],
+        "dining_options": ["Picnic at Håen Parkering", "Snacks from local store"],
         "images": [],  # Will be populated after full trip_data is defined
     },
     {
@@ -648,7 +648,7 @@ norway_locations = {
                           "https://www.google.com/maps/place/Haukland+Beach/@68.1924842,13.5156587,15z/"],
     "2025-08-05 (Tuesday)": ["https://www.google.com/maps/place/Reinebringen/@67.9319532,13.0787456,15z/",
                            "https://www.google.com/maps/place/Hamnøy/@67.9394111,13.1369071,15z/"],
-    "2025-08-06 (Wednesday)": ["https://www.google.com/maps/place/Nusfjord/@68.0352924,13.3491096,15z/"],
+    "2025-08-06 (Wednesday)": ["https://www.google.com/maps/place/Håen+Parkering/@68.0482,13.3752,17z/"],
     "2025-08-07 (Thursday)": ["https://www.google.com/maps/place/Henningsvær/@68.1483917,14.2015219,14z/",
                              "https://www.google.com/maps/place/Fløya/@68.2187728,14.5661099,14z/"],
     "2025-08-08 (Friday)": ["https://www.google.com/maps/place/Bergen/@60.3943036,5.3259192,12z/"],
