@@ -1923,8 +1923,8 @@ for day in trip_data:
                                     </div>
                                     <div>
                                         <div style="font-weight: bold; font-size: 1.1rem;">{weather['weather'][0]['description'].capitalize()}</div>
-                                        <div style="font-size: 1.5rem; font-weight: bold; margin: 5px 0;">{weather['main']['temp']}°C</div>
-                                        <div style="font-size: 0.9rem;">Feels like: {weather['main']['feels_like']}°C</div>
+                                        <div style="font-size: 1.5rem; font-weight: bold; margin: 5px 0;">{float(weather['main']['temp']):.1f}°C</div>
+                                        <div style="font-size: 0.9rem;">Feels like: {float(weather['main']['feels_like']):.1f}°C</div>
                                     </div>
                                 </div>
                                 <div style="display: flex; justify-content: space-between; margin-top: 10px;">
