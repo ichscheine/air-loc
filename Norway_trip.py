@@ -2898,9 +2898,15 @@ for day in trip_data:
                         high_res_path_ascii = ascii_filename(img_path.replace("Norway_gallery/", "Norway_gallery/original_backup/"))
                         actual_path = high_res_path_ascii if os.path.exists(high_res_path_ascii) else img_path_ascii
                         high_quality_img = load_high_quality_image(actual_path)
+                        # Use enhanced caption if available, otherwise use image filename (without extension)
+                        if img_idx < len(day_images):
+                            caption = day_images[img_idx]["caption"]
+                        else:
+                            import os
+                            caption = os.path.splitext(os.path.basename(day["images"][img_idx]))[0].replace('_', ' ').title()
                         st.image(
                             high_quality_img,
-                            caption=day_images[img_idx]["caption"] if img_idx < len(day_images) else "Norway Scene",
+                            caption=caption,
                             use_container_width=True
                         )
                 
