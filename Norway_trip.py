@@ -2857,7 +2857,15 @@ for day in trip_data:
                 }
                 
                 # Select best image based on user preferences
-                day_images = enhanced_captions.get(day["date"], [{"caption": "Norway Scene", "activity": ""}])
+                # Use enhanced captions if available, else generate captions from image filenames
+                if day["date"] in enhanced_captions:
+                    day_images = enhanced_captions[day["date"]]
+                else:
+                    # Generate captions from image filenames for all images of the day
+                    day_images = []
+                    for img_path in day["images"]:
+                        img_name = os.path.splitext(os.path.basename(img_path))[0].replace('_', ' ').title()
+                        day_images.append({"caption": img_name, "activity": ""})
                 best_image_idx = 0
                 
                 # Prioritize based on user activities
@@ -2900,9 +2908,11 @@ for day in trip_data:
                         high_quality_img = load_high_quality_image(actual_path)
                         # Use enhanced caption if available, otherwise use image filename (without extension)
                         if img_idx < len(day_images):
-                            caption = day_images[img_idx]["caption"]
+                            caption = day_images[img_idx].get("caption", "")
                         else:
-                            import os
+                            caption = ""
+                        # Always use the filename as fallback if caption is missing or is 'Norway Scene'
+                        if not caption or caption.strip().lower() == "norway scene":
                             caption = os.path.splitext(os.path.basename(day["images"][img_idx]))[0].replace('_', ' ').title()
                         st.image(
                             high_quality_img,
